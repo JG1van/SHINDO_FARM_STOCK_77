@@ -1,0 +1,357 @@
+:root {
+    --color-primary: #ffc93c;
+    --color-secondary: #e8871e;
+    --color-accent: #fff4d6;
+    --color-bg: #fffbeb;
+    --color-card: #ffffff;
+    --color-dark: #1a1a1a;
+    --color-border: #1a1a1a;
+    --border-width: 3px;
+    --shadow-offset: 5px;
+    --shadow: var(--shadow-offset) var(--shadow-offset) 0px var(--color-dark);
+    --shadow-small: 3px 3px 0px var(--color-dark);
+    --radius: 4px;
+    --font-main: "Space Grotesk", sans-serif;
+    --nav-height: 72px;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: var(--font-main);
+    background-color: var(--color-bg);
+    color: var(--color-dark);
+    padding-top: var(--nav-height);
+}
+
+h1,
+h2,
+h3 {
+    font-weight: 700;
+}
+
+/* NAVBAR */
+#navbar-neo {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1030;
+    height: var(--nav-height);
+    background-color: var(--color-card);
+    border-bottom: var(--border-width) solid var(--color-border);
+}
+
+#navbar-neo .navbar-brand-neo {
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: var(--color-dark);
+    text-decoration: none;
+}
+
+#navbar-neo .nav-link-neo {
+    font-weight: 700;
+    color: var(--color-dark);
+    text-decoration: none;
+    padding: 0.5rem 0.9rem;
+    border: var(--border-width) solid transparent;
+    border-radius: var(--radius);
+    transition: background-color .15s ease, border-color .15s ease, transform .1s ease;
+}
+
+#navbar-neo .nav-link-neo:hover,
+#navbar-neo .nav-link-neo.active-neo {
+    background-color: var(--color-primary);
+    border-color: var(--color-border);
+    transform: translate(-1px, -1px);
+}
+
+#navbar-neo .navbar-toggler-neo {
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius);
+    background-color: var(--color-card);
+    box-shadow: var(--shadow-small);
+    padding: .35rem .6rem;
+}
+
+#mobileMenuNeo {
+    background-color: var(--color-card);
+    border-bottom: var(--border-width) solid var(--color-border);
+}
+
+#mobileMenuNeo .nav-link-neo {
+    display: block;
+    margin-bottom: .5rem;
+}
+
+/* BUTTON */
+.btn-neo {
+    font-family: var(--font-main);
+    font-weight: 700;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    transition: transform .1s ease, box-shadow .1s ease;
+}
+
+.btn-neo:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 3px 3px 0px var(--color-dark);
+}
+
+.btn-neo:active {
+    transform: translate(4px, 4px);
+    box-shadow: 1px 1px 0px var(--color-dark);
+}
+
+.btn-neo-primary {
+    background-color: var(--color-primary);
+    color: var(--color-dark);
+}
+
+.btn-neo-secondary {
+    background-color: var(--color-card);
+    color: var(--color-dark);
+}
+
+.btn-neo-danger {
+    background-color: #ff6b6b;
+    color: var(--color-dark);
+}
+
+.btn-neo-sm {
+    padding: .3rem .7rem;
+    font-size: .85rem;
+    box-shadow: var(--shadow-small);
+}
+
+.btn-neo-sm:hover {
+    box-shadow: 2px 2px 0px var(--color-dark);
+}
+
+/* CARD */
+.card-neo {
+    background-color: var(--color-card);
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+/* TABLE */
+.table-neo {
+    background-color: #ffffff;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.table-neo thead {
+    background-color: #ffffff;
+}
+
+.table-neo thead th {
+    font-weight: 700;
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    color: var(--color-dark);
+    border-bottom: var(--border-width) solid var(--color-border) !important;
+    padding: .9rem .75rem;
+}
+
+.table-neo tbody tr {
+    background-color: #ffffff;
+}
+
+.table-neo th,
+.table-neo td {
+    border: 1px solid #e2ddc9 !important;
+    vertical-align: middle;
+    padding: .75rem;
+}
+
+.table-neo tbody tr:hover {
+    background-color: #fffdf5;
+}
+
+/* FORM */
+.form-control-neo,
+.form-select-neo {
+    border: var(--border-width) solid var(--color-border) !important;
+    border-radius: var(--radius) !important;
+    box-shadow: var(--shadow-small);
+    font-family: var(--font-main);
+    transition: box-shadow .2s ease, transform .2s ease;
+}
+
+.form-control-neo:focus,
+.form-select-neo:focus {
+    box-shadow: var(--shadow) !important;
+    transform: translate(-1px, -1px);
+    border-color: var(--color-border) !important;
+}
+
+/* MODAL */
+.modal-neo .modal-content {
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+.modal-neo .modal-header {
+    border-bottom: var(--border-width) solid var(--color-border);
+}
+
+/* BADGE */
+.badge-neo {
+    font-size: .75rem;
+    font-weight: 700;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius);
+}
+
+/* PAGE HEADER */
+.page-header-neo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+@media (max-width: 768px) {
+    :root {
+        --nav-height: 64px;
+    }
+}
+
+/* ===== SIDEBAR LAYOUT ===== */
+.sidebar-neo {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 260px;
+    background-color: var(--color-bg);
+    border-right: var(--border-width) solid var(--color-border);
+    z-index: 1040;
+    display: flex;
+    flex-direction: column;
+    transition: transform .2s ease;
+}
+
+.sidebar-neo .sidebar-brand {
+    height: var(--nav-height);
+    display: flex;
+    align-items: center;
+    padding: 0 1.25rem;
+    border-bottom: var(--border-width) solid var(--color-border);
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.25rem;
+    color: var(--color-dark);
+    text-decoration: none;
+}
+
+.sidebar-neo .sidebar-menu {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    overflow-y: auto;
+}
+
+.sidebar-neo .sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .75rem 1rem;
+    border-radius: var(--radius);
+    border: var(--border-width) solid transparent;
+    color: var(--color-dark);
+    text-decoration: none;
+    font-weight: 700;
+    transition: background-color .15s ease, border-color .15s ease, transform .1s ease;
+}
+
+.sidebar-neo .sidebar-link:hover {
+    background-color: var(--color-card);
+    border-color: var(--color-border);
+    transform: translate(-1px, -1px);
+}
+
+.sidebar-neo .sidebar-link.active-neo {
+    background-color: var(--color-primary);
+    border-color: var(--color-border);
+    box-shadow: var(--shadow-small);
+}
+
+.sidebar-neo .sidebar-link .icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    font-size: 1.05rem;
+    flex-shrink: 0;
+}
+
+/* ===== TOPBAR (cuma judul, tanpa menu) ===== */
+.topbar-neo {
+    position: fixed;
+    top: 0;
+    left: 260px;
+    right: 0;
+    height: var(--nav-height);
+    background-color: var(--color-bg);
+    border-bottom: var(--border-width) solid var(--color-border);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0 1.5rem;
+    z-index: 1030;
+}
+
+.sidebar-toggle-neo {
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius);
+    background-color: var(--color-card);
+    box-shadow: var(--shadow-small);
+    padding: .4rem .6rem;
+    cursor: pointer;
+    display: none;
+}
+
+.main-content-neo {
+    margin-left: 260px;
+    padding-top: var(--nav-height);
+    min-height: 100vh;
+    background-color: var(--color-card);
+}
+
+/* ===== RESPONSIVE: sidebar jadi drawer di mobile ===== */
+@media (max-width: 991px) {
+    .sidebar-neo {
+        transform: translateX(-100%);
+    }
+
+    .sidebar-neo.show-neo {
+        transform: translateX(0);
+    }
+
+    .topbar-neo {
+        left: 0;
+    }
+
+    .main-content-neo {
+        margin-left: 0;
+    }
+
+    .sidebar-toggle-neo {
+        display: inline-block;
+    }
+}
