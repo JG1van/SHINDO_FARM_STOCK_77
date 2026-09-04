@@ -3,13 +3,18 @@
 @section('title', 'Dashboard - SHINDO FARM 77')
 
 @section('content')
-    <div class="page-header-neo">
-        <h2 class="fw-bold mb-0">Dashboard</h2>
+   <div class="page-header-neo">
+    <h2 class="fw-bold mb-0">Dashboard</h2>
+    <div class="d-flex gap-2">
+        <a href="{{ route('kalkulator.index') }}" class="btn btn-neo btn-neo-secondary">
+            <i class="bi bi-calculator"></i> Kalkulator
+        </a>
         <a id="btnExportExcel" href="{{ route('dashboard.export', ['bulan' => $bulan, 'tahun' => $tahun]) }}"
             class="btn btn-neo btn-neo-primary">
             <i class="bi bi-file-earmark-excel"></i> Export Excel
         </a>
     </div>
+</div>
 
     <!-- Filter Bulan & Tahun -->
     <div class="d-flex gap-2 mb-3">
@@ -81,6 +86,17 @@
             </div>
         </div>
         <div class="col-6 col-md-4">
+            <div class="stat-card-neo accent-amber">
+                <div class="stat-icon-neo icon-amber"><i class="bi bi-gift-fill"></i></div>
+                <div>
+                    <div class="stat-label-neo">Telur Bonus</div>
+                    <div class="stat-value-neo">{{ number_format($bonusBulanIni) }}</div>
+                    <div class="stat-sub-neo">butir bulan ini</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-md-4">
             <div class="stat-card-neo {{ $stokBelumTerjual < 0 ? 'accent-red' : 'accent-purple' }}">
                 <div class="stat-icon-neo {{ $stokBelumTerjual < 0 ? 'icon-red' : 'icon-purple' }}"><i class="bi bi-box-seam-fill"></i></div>
                 <div>
@@ -92,7 +108,6 @@
                 </div>
             </div>
         </div>
-
         <div class="col-6 col-md-4">
             <div class="stat-card-neo accent-green">
                 <div class="stat-icon-neo icon-green"><i class="bi bi-cash-coin"></i></div>
@@ -113,6 +128,7 @@
                 </div>
             </div>
         </div>
+
         <div class="col-6 col-md-4">
             <div class="stat-card-neo {{ $labaBersih >= 0 ? 'accent-green' : 'accent-red' }}">
                 <div class="stat-icon-neo {{ $labaBersih >= 0 ? 'icon-green' : 'icon-red' }}"><i class="bi bi-wallet2"></i></div>
@@ -142,8 +158,15 @@
                     </div>
                 @endforeach
             </div>
+            <div class="form-text small mb-0">
+                Uncheck kandang untuk menghitung ulang Total &amp; Rata-rata, grafik Tren, dan tabel Produktivitas
+                di bawah tanpa data kandang tersebut.
+            </div>
         </div>
 
+        {{-- Wrapper ini yang membatasi tabel supaya tetap di dalam area putih (main-content-neo).
+             Kalau tabelnya lebih lebar dari layar, cukup di-scroll ke samping (overflow-x: auto di CSS),
+             tidak lagi di-scale/zoom karena itu yang dulu bikin tabel numpuk ke konten bawah. --}}
         <div class="pivot-scale-wrapper" id="pivotWrapper">
             <table class="table table-neo table-sm align-middle mb-0" id="pivotTable">
                 <thead>
@@ -209,7 +232,7 @@
         <div class="col-lg-6">
             <h5 class="fw-bold mb-3">Produktivitas per Kandang</h5>
             <div class="table-responsive">
-                <table class="table table-neo align-middle mb-0">
+                <table class="table table-neo align-middle mb-0" id="produktivitasTable">
                     <thead>
                         <tr>
                             <th>Kandang</th>
@@ -220,7 +243,7 @@
                     </thead>
                     <tbody>
                         @forelse ($produktivitasKandang as $p)
-                            <tr>
+                            <tr data-kandang-id="{{ $p['kandang_id'] }}">
                                 <td>{{ $p['nama'] }}</td>
                                 <td>{{ $p['jenis_ayam'] }}</td>
                                 <td>{{ number_format($p['total_telur']) }}</td>
@@ -263,9 +286,7 @@
                     </tbody>
                 </table>
             </div>
-            <div class="small text-muted mt-2">
-                Rata-rata harga jual: Rp {{ number_format($rataRataHargaPerButir, 0, ',', '.') }} / butir
-            </div>
+           
         </div>
     </div>
 
@@ -277,32 +298,32 @@
         </div>
 
         <!-- Aktivitas Terbaru -->
+        {{-- FIX MASALAH 1 & 2: sekarang satu feed kronologis ($aktivitasTerbaru) yang sudah ikut
+             filter bulan/tahun dan diurutkan lintas jenis berdasarkan created_at, bukan ditumpuk
+             per jenis lagi. --}}
         <div class="col-lg-6">
             <h5 class="fw-bold mb-3">Aktivitas Terbaru</h5>
             <ul class="list-unstyled small">
-                @foreach ($penjualanTerbaru as $p)
+                @forelse ($aktivitasTerbaru as $a)
+                    @php
+                        $dotClass = match ($a['tipe']) {
+                            'penjualan'  => 'text-success',
+                            'pengeluaran'=> 'text-danger',
+                            'produksi'   => 'text-warning',
+                            default      => 'text-muted',
+                        };
+                    @endphp
                     <li class="mb-2">
-                        <span class="text-success">●</span>
-                        Penjualan {{ $p->jumlah_telur }} butir ke <strong>{{ $p->nama_pembeli }}</strong>
-                        — Rp {{ number_format($p->total_harga, 0, ',', '.') }}
-                        <span class="text-muted">({{ \Carbon\Carbon::parse($p->tanggal)->format('d M Y') }})</span>
+                        <span class="{{ $dotClass }}">●</span>
+                        {{ $a['deskripsi'] }}
+                        @if ($a['jumlah'])
+                            — {{ $a['jumlah'] }}
+                        @endif
+                        <span class="text-muted">({{ \Carbon\Carbon::parse($a['tanggal'])->format('d M Y') }})</span>
                     </li>
-                @endforeach
-                @foreach ($pengeluaranTerbaru as $p)
-                    <li class="mb-2">
-                        <span class="text-danger">●</span>
-                        Pengeluaran <strong>{{ $p->keterangan }}</strong>
-                        — Rp {{ number_format($p->jumlah, 0, ',', '.') }}
-                        <span class="text-muted">({{ \Carbon\Carbon::parse($p->tanggal)->format('d M Y') }})</span>
-                    </li>
-                @endforeach
-                @foreach ($telurTerbaru as $t)
-                    <li class="mb-2">
-                        <span class="text-warning">●</span>
-                        Input produksi {{ $t->jumlah_butir }} butir di kandang <strong>{{ $t->kandang_nama }}</strong>
-                        <span class="text-muted">({{ \Carbon\Carbon::parse($t->tanggal)->format('d M Y') }})</span>
-                    </li>
-                @endforeach
+                @empty
+                    <li class="text-muted">Belum ada aktivitas bulan ini</li>
+                @endforelse
             </ul>
         </div>
     </div>
@@ -325,6 +346,10 @@
         // ===== Filter kandang untuk Total & Rata-rata (checkbox, default semua tercentang) =====
         const hariPembagi = {{ $hariPembagi }};
 
+        // FIX MASALAH 4: produksi harian per kandang (urutan sama seperti chartLabels/tanggal),
+        // dipakai untuk menghitung ulang garis "Produksi" di grafik Tren saat checkbox berubah.
+        const chartProduksiPerKandang = @json($chartProduksiPerKandang);
+
         function formatRibuan(n) {
             return new Intl.NumberFormat('id-ID').format(Math.round(n));
         }
@@ -342,7 +367,7 @@
 
             let grandTotal = 0;
 
-            // Hitung ulang tiap baris (per tanggal)
+            // Hitung ulang tiap baris (per tanggal) pivot table
             document.querySelectorAll('tbody tr[data-tgl]').forEach(function(tr) {
                 let rowTotal = 0;
                 tr.querySelectorAll('.cell-kandang').forEach(function(td) {
@@ -357,54 +382,42 @@
 
             const rataRata = hariPembagi > 0 ? grandTotal / hariPembagi : 0;
 
-            // Update footer tabel
+            // Update footer tabel pivot
             document.getElementById('footerGrandTotal').textContent = formatRibuan(grandTotal);
             document.getElementById('footerGrandAvg').textContent = formatSatuDesimal(rataRata);
 
             // Update kartu KPI
             document.getElementById('kpiProduksiTelur').textContent = formatRibuan(grandTotal);
             document.getElementById('kpiRataRataHarian').textContent = formatSatuDesimal(rataRata);
+
+            // (a) Filter ulang chart Tren: hitung ulang garis "Produksi" hanya dari kandang tercentang
+            if (window.chartTren) {
+                const jumlahHari = chartLabels.length;
+                const produksiTerfilter = new Array(jumlahHari).fill(0);
+                checkedIds.forEach(function(id) {
+                    const dataKandang = chartProduksiPerKandang[id];
+                    if (!dataKandang) return;
+                    for (let i = 0; i < jumlahHari; i++) {
+                        produksiTerfilter[i] += dataKandang[i] || 0;
+                    }
+                });
+                window.chartTren.data.datasets[0].data = produksiTerfilter;
+                window.chartTren.update();
+            }
+
+            // (b) Sembunyikan/highlight baris kandang yang di-uncheck di tabel Produktivitas per Kandang
+            document.querySelectorAll('#produktivitasTable tbody tr[data-kandang-id]').forEach(function(tr) {
+                tr.classList.toggle('kandang-excluded', !checkedIds.includes(tr.dataset.kandangId));
+            });
         }
 
         document.querySelectorAll('.chk-kandang-hitung').forEach(function(chk) {
             chk.addEventListener('change', hitungUlangTotalRataRata);
         });
 
-        // ===== Auto-shrink tabel pivot Produksi Harian supaya selalu pas di lebar layar =====
-        // Prinsipnya: bukan di-scroll, tapi di-scale (zoom out) proporsional kalau
-        // lebar asli tabel (scrollWidth) lebih besar dari lebar wrapper-nya.
-        function fitPivotTable() {
-            const wrapper = document.getElementById('pivotWrapper');
-            const table = document.getElementById('pivotTable');
-            if (!wrapper || !table) return;
-
-            // Reset dulu supaya ukuran yang diukur adalah ukuran asli (belum di-scale)
-            table.style.transform = 'none';
-            wrapper.style.height = 'auto';
-
-            const wrapperWidth = wrapper.clientWidth;
-            const tableWidth = table.scrollWidth;
-            const tableHeight = table.offsetHeight;
-
-            if (tableWidth > wrapperWidth && wrapperWidth > 0) {
-                // Batas minimal 0.4 (40%) supaya teksnya tidak sampai tidak kebaca sama sekali
-                // kalau kandangnya sangat banyak.
-                const scale = Math.max(wrapperWidth / tableWidth, 0.4);
-                table.style.transform = `scale(${scale})`;
-                // Tinggi wrapper disesuaikan hasil scale, biar tidak ada ruang kosong di bawah tabel
-                wrapper.style.height = (tableHeight * scale) + 'px';
-            }
-        }
-
-        // Jalankan setelah semua konten (termasuk font) selesai dimuat, supaya ukuran akurat
-        window.addEventListener('load', fitPivotTable);
-
-        // Jalankan ulang saat ukuran layar berubah (resize window / rotate HP), di-debounce
-        let _fitPivotTimeout;
-        window.addEventListener('resize', function() {
-            clearTimeout(_fitPivotTimeout);
-            _fitPivotTimeout = setTimeout(fitPivotTable, 150);
-        });
+        // Catatan: fungsi fitPivotTable() (scale/zoom tabel) SUDAH DIHAPUS.
+        // Sekarang tabel pivot cukup di-scroll ke samping (lihat CSS .pivot-scale-wrapper),
+        // supaya tidak pernah keluar/numpuk ke konten lain seperti sebelumnya.
 
         // Grafik tren harian
         const chartLabels = @json($chartLabels);
@@ -414,7 +427,9 @@
 
         const isMobileNeo = window.matchMedia('(max-width: 767.98px)').matches;
 
-        new Chart(document.getElementById('chartTren'), {
+        // Simpan instance chart di window.chartTren supaya bisa diupdate ulang oleh
+        // hitungUlangTotalRataRata() saat checkbox kandang berubah (FIX MASALAH 4).
+        window.chartTren = new Chart(document.getElementById('chartTren'), {
             type: 'line',
             data: {
                 labels: chartLabels,
@@ -540,4 +555,12 @@
             }
         });
     </script>
+
+    <style>
+        /* Baris kandang yang di-uncheck di tabel Produktivitas per Kandang -> diredupkan (FIX MASALAH 4) */
+        #produktivitasTable tbody tr.kandang-excluded {
+            opacity: 0.4;
+            text-decoration: line-through;
+        }
+    </style>
 @endsection

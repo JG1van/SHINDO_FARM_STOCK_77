@@ -279,7 +279,7 @@
         document.getElementById('filterBulan').addEventListener('change', muatTelur);
         document.getElementById('filterTahun').addEventListener('change', muatTelur);
 
-        // ===== VOICE INPUT (guided step-by-step, terbukti berhasil) =====
+        // ===== VOICE INPUT (guided step-by-step, dengan 4 perbaikan) =====
         const btnVoiceInput = document.getElementById('btnVoiceInput');
         const modalVoiceTelur = new bootstrap.Modal(document.getElementById('modalVoiceTelur'));
         const voiceStepText = document.getElementById('voiceStepText');
@@ -291,7 +291,60 @@
         let voiceJumlahHasil = null;
         let voiceDibatalkan = false;
         let voiceRetry = 0;
+        let sudahAdaRespon = false; // [FIX BUG 3] penanda apakah event 'result' atau 'error' sudah sempat terjadi di sesi dengar saat ini
         const VOICE_MAX_RETRY = 3;
+
+        // [FIX BUG 1] Pemetaan kata angka Bahasa Indonesia -> digit, dipakai sebagai fallback
+        // kalau regex digit (\d+) tidak menemukan apa-apa di transkrip suara.
+        const SATUAN_KATA = {
+            'nol': 0, 'kosong': 0, 'satu': 1, 'dua': 2, 'tiga': 3, 'empat': 4,
+            'lima': 5, 'enam': 6, 'tujuh': 7, 'delapan': 8, 'sembilan': 9
+        };
+        const KOSAKATA_ANGKA = new Set([
+            ...Object.keys(SATUAN_KATA), 'sepuluh', 'sebelas', 'belas', 'puluh', 'seratus', 'ratus', 'seribu', 'ribu'
+        ]);
+
+        function kataAngkaKeDigit(teks) {
+            const tokenSemua = teks.toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(Boolean);
+            const tokens = tokenSemua.filter(k => KOSAKATA_ANGKA.has(k));
+            if (!tokens.length) return null;
+
+            let hasil = 0;
+            let i = 0;
+            let adaAngka = false;
+
+            // Ribuan: "seribu" / "X ribu"
+            if (tokens[i] === 'seribu') { hasil += 1000; i++; adaAngka = true; }
+            else if (SATUAN_KATA[tokens[i]] !== undefined && tokens[i + 1] === 'ribu') {
+                hasil += SATUAN_KATA[tokens[i]] * 1000; i += 2; adaAngka = true;
+            }
+
+            // Ratusan: "seratus" / "X ratus"
+            if (tokens[i] === 'seratus') { hasil += 100; i++; adaAngka = true; }
+            else if (SATUAN_KATA[tokens[i]] !== undefined && tokens[i + 1] === 'ratus') {
+                hasil += SATUAN_KATA[tokens[i]] * 100; i += 2; adaAngka = true;
+            }
+
+            // Belasan: "sepuluh", "sebelas", "X belas"
+            if (tokens[i] === 'sepuluh') { hasil += 10; i++; adaAngka = true; }
+            else if (tokens[i] === 'sebelas') { hasil += 11; i++; adaAngka = true; }
+            else if (SATUAN_KATA[tokens[i]] !== undefined && tokens[i + 1] === 'belas') {
+                hasil += SATUAN_KATA[tokens[i]] + 10; i += 2; adaAngka = true;
+            }
+            // Puluhan: "X puluh" (opsional diikuti satuan, misal "dua puluh lima")
+            else if (SATUAN_KATA[tokens[i]] !== undefined && tokens[i + 1] === 'puluh') {
+                hasil += SATUAN_KATA[tokens[i]] * 10; i += 2; adaAngka = true;
+                if (SATUAN_KATA[tokens[i]] !== undefined) {
+                    hasil += SATUAN_KATA[tokens[i]]; i++;
+                }
+            }
+            // Satuan tunggal: "tiga", "lima", "nol", dst
+            else if (SATUAN_KATA[tokens[i]] !== undefined) {
+                hasil += SATUAN_KATA[tokens[i]]; i++; adaAngka = true;
+            }
+
+            return adaAngka ? hasil : null;
+        }
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition = null;
@@ -303,12 +356,22 @@
             recognition.interimResults = false;
 
             recognition.addEventListener('result', function(e) {
+                sudahAdaRespon = true; // [FIX BUG 3] tandai sudah ada hasil, supaya listener 'end' tidak retry ganda
                 if (voiceDibatalkan) return;
                 const ucapan = e.results[0][0].transcript.toLowerCase();
 
                 if (voiceStep === 'kandang') {
-                    const opsiKandang = Array.from(document.getElementById('kandang_id').options);
-                    const cocok = opsiKandang.find(opt => opt.value && ucapan.includes(opt.text.toLowerCase()));
+                    // [FIX BUG 2] Exact word match: urutkan nama kandang dari yang terpanjang dulu,
+                    // lalu cek SETIAP kata penyusun nama kandang muncul utuh di ucapan (bukan substring bebas).
+                    const kataUcapan = ucapan.split(/\s+/);
+                    const opsiKandang = Array.from(document.getElementById('kandang_id').options)
+                        .filter(opt => opt.value)
+                        .sort((a, b) => b.text.length - a.text.length);
+
+                    const cocok = opsiKandang.find(opt => {
+                        const kataNama = opt.text.toLowerCase().split(/\s+/);
+                        return kataNama.every(kn => kataUcapan.includes(kn));
+                    });
 
                     if (cocok) {
                         voiceKandangHasil = cocok;
@@ -319,9 +382,18 @@
                         gagalKenali('Kandang tidak dikenali dari: "' + ucapan + '"', tanyaKandang);
                     }
                 } else if (voiceStep === 'jumlah') {
+                    // [FIX BUG 1] Coba digit dulu, kalau tidak ada baru coba kata angka Bahasa Indonesia
                     const cocokAngka = ucapan.match(/\d+/);
+                    let jumlah = null;
                     if (cocokAngka) {
-                        voiceJumlahHasil = cocokAngka[0];
+                        jumlah = cocokAngka[0];
+                    } else {
+                        const dariKata = kataAngkaKeDigit(ucapan);
+                        if (dariKata !== null) jumlah = String(dariKata);
+                    }
+
+                    if (jumlah !== null) {
+                        voiceJumlahHasil = jumlah;
                         voiceRetry = 0;
                         voiceStatusText.textContent = 'Jumlah terdeteksi: ' + voiceJumlahHasil;
                         setTimeout(selesaiVoiceFlow, 800);
@@ -332,16 +404,31 @@
             });
 
             recognition.addEventListener('error', function(e) {
+                sudahAdaRespon = true; // [FIX BUG 3] error juga dihitung sebagai "sudah ada respon", biar 'end' tidak retry ganda
                 if (voiceDibatalkan) return;
                 gagalKenali('Gagal menangkap suara (' + e.error + ').', function() {
                     if (voiceStep === 'kandang') tanyaKandang();
                     else if (voiceStep === 'jumlah') tanyaJumlah();
                 });
             });
+
+            // [FIX BUG 3] Kalau mic diam total (timeout tanpa suara terdeteksi), browser cuma
+            // memicu 'end' tanpa 'result' maupun 'error'. Tanpa listener ini, UI macet selamanya
+            // di teks "Mendengarkan...". Sekarang otomatis retry lewat mekanisme yang sama.
+            recognition.addEventListener('end', function() {
+                if (voiceDibatalkan) return;
+                if (!sudahAdaRespon) {
+                    gagalKenali('Tidak ada suara yang terdeteksi.', function() {
+                        if (voiceStep === 'kandang') tanyaKandang();
+                        else if (voiceStep === 'jumlah') tanyaJumlah();
+                    });
+                }
+            });
         }
 
         function gagalKenali(pesan, ulangiFn) {
             voiceRetry++;
+            voiceIcon.classList.remove('voice-pulse');
             voiceIcon.textContent = '🎤';
             voiceStatusText.textContent = pesan;
 
@@ -383,10 +470,10 @@
         function tanyaKandang() {
             if (voiceDibatalkan) return;
             voiceStep = 'kandang';
+            sudahAdaRespon = false; // [FIX BUG 3] reset penanda tiap kali mulai sesi dengar baru
             voiceStepText.textContent = 'Sebutkan nama kandang';
             voiceStatusText.textContent = 'Menyiapkan...';
             voiceIcon.textContent = '🔊';
-            // Jeda sebelum listen dimulai, supaya tidak bentrok dengan dialog izin mikrofon
             ucapkan('Sebutkan nama kandang', function() {
                 if (voiceDibatalkan) return;
                 voiceIcon.textContent = '🎤';
@@ -395,7 +482,6 @@
                 try {
                     recognition.start();
                 } catch (err) {
-                    // Recognition masih dalam sesi sebelumnya, coba abort lalu mulai ulang
                     recognition.abort();
                     setTimeout(() => recognition.start(), 300);
                 }
@@ -405,6 +491,7 @@
         function tanyaJumlah() {
             if (voiceDibatalkan) return;
             voiceStep = 'jumlah';
+            sudahAdaRespon = false; // [FIX BUG 3] reset penanda tiap kali mulai sesi dengar baru
             voiceStepText.textContent = 'Sebutkan jumlah telur';
             voiceStatusText.textContent = 'Menyiapkan...';
             voiceIcon.textContent = '🔊';
@@ -460,6 +547,17 @@
         }
         document.getElementById('btnBatalVoice').addEventListener('click', batalkanVoiceFlow);
         document.getElementById('btnBatalVoice2').addEventListener('click', batalkanVoiceFlow);
+
+        // [FIX BUG 4] Modal pakai backdrop:"static" (klik luar tidak menutup), tapi tombol Esc
+        // keyboard tetap bisa memicu event Bootstrap 'hidden.bs.modal' walau backdrop static.
+        // Tanpa listener ini, recognition tetap jalan di background walau modal sudah tertutup.
+        document.getElementById('modalVoiceTelur').addEventListener('hidden.bs.modal', function() {
+            if (voiceDibatalkan) return; // sudah dibatalkan lewat tombol Batal, tidak perlu diulang
+            voiceDibatalkan = true;
+            voiceIcon.classList.remove('voice-pulse');
+            if (recognition) recognition.abort();
+            if (window.speechSynthesis) window.speechSynthesis.cancel();
+        });
 
         muatTelur();
     </script>

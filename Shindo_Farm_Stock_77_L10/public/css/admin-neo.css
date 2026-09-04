@@ -215,6 +215,12 @@ h3 {
     border-radius: var(--radius);
 }
 
+/* Grid card statistik & filter kandang: konten (bukan judul h2/h5) ditengah-kan */
+.row.g-3.mb-4,
+.d-flex.flex-wrap.gap-3 {
+    justify-content: center;
+}
+
 /* PAGE HEADER */
 .page-header-neo {
     display: flex;
@@ -369,128 +375,219 @@ body::-webkit-scrollbar,
     height: 0 !important;
 }
 
- .stat-card-neo {
-            background: var(--color-card);
-            border: var(--border-width) solid var(--color-border);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-            padding: 1.1rem 1.25rem;
-            height: 100%;
-            display: flex;
-            align-items: flex-start;
-            gap: .9rem;
-            transition: transform .1s ease, box-shadow .1s ease;
-        }
-        .stat-card-neo:hover {
-            transform: translate(2px, 2px);
-            box-shadow: var(--shadow-small);
-        }
-        .stat-icon-neo {
-            width: 46px;
-            height: 46px;
-            min-width: 46px;
-            border: var(--border-width) solid var(--color-border);
-            border-radius: var(--radius);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            color: var(--color-dark);
-        }
-        .stat-label-neo {
-            font-size: .72rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: .04em;
-            color: var(--color-dark);
-            opacity: .55;
-            margin-bottom: 2px;
-        }
-        .stat-value-neo {
-            font-size: 1.4rem;
-            font-weight: 700;
-            line-height: 1.15;
-            color: var(--color-dark);
-        }
-        .stat-sub-neo {
-            font-size: .76rem;
-            font-weight: 600;
-            color: var(--color-dark);
-            opacity: .55;
-            margin-top: 2px;
-        }
-        .icon-amber  { background: var(--color-primary); }
-        .icon-orange { background: var(--color-secondary); }
-        .icon-blue   { background: #6fd6f0; }
-        .icon-green  { background: #8fe0a8; }
-        .icon-red    { background: #ff8fa3; }
-        .icon-purple { background: #c6b2f2; }
+.stat-card-neo {
+    background: var(--color-card);
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1.1rem 1.25rem;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .9rem;
+    transition: transform .1s ease, box-shadow .1s ease;
+}
+.stat-card-neo:hover {
+    transform: translate(2px, 2px);
+    box-shadow: var(--shadow-small);
+}
+.stat-icon-neo {
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: var(--color-dark);
+}
+.stat-label-neo {
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--color-dark);
+    opacity: .55;
+    margin-bottom: 2px;
+}
+.stat-value-neo {
+    font-size: 1.4rem;
+    font-weight: 700;
+    line-height: 1.15;
+    color: var(--color-dark);
+}
+.stat-sub-neo {
+    font-size: .76rem;
+    font-weight: 600;
+    color: var(--color-dark);
+    opacity: .55;
+    margin-top: 2px;
+}
+.icon-amber  { background: var(--color-primary); }
+.icon-orange { background: var(--color-secondary); }
+.icon-blue   { background: #6fd6f0; }
+.icon-green  { background: #8fe0a8; }
+.icon-red    { background: #ff8fa3; }
+.icon-purple { background: #c6b2f2; }
 
-        /* ===== Mode HP: grid 2 kolom tetap seperti semula, ikon dihilangkan, ukuran sedikit dikecilkan ===== */
-        @media (max-width: 767.98px) {
-            .stat-icon-neo {
-                display: none;
-            }
-            .stat-card-neo {
-                padding: .8rem .9rem;
-                gap: .5rem;
-            }
-            .stat-label-neo {
-                font-size: .64rem;
-            }
-            .stat-value-neo {
-                font-size: 1.1rem;
-            }
-            .stat-sub-neo {
-                font-size: .68rem;
-            }
-        }
+/* ===== Mode Tablet: card dibuat lebih besar (ikon, angka, padding diperbesar) ===== */
+@media (min-width: 768px) and (max-width: 991.98px) {
+    .stat-card-neo {
+        padding: 1.4rem 1.5rem;
+        gap: 1.1rem;
+    }
+    .stat-icon-neo {
+        width: 56px;
+        height: 56px;
+        min-width: 56px;
+        font-size: 1.5rem;
+    }
+    .stat-label-neo {
+        font-size: .82rem;
+    }
+    .stat-value-neo {
+        font-size: 1.7rem;
+    }
+    .stat-sub-neo {
+        font-size: .86rem;
+    }
+}
 
-        /* Kandang yang tidak dicentang: ditampilkan redup + dicoret, tapi tetap terlihat datanya */
-        .kandang-excluded {
-            opacity: .35;
-            text-decoration: line-through;
-        }
+/* ===== Mode HP: ikon disembunyikan, card dibuat kotak (aspect-ratio 1:1),
+   teks rata tengah karena ikon sudah tidak ada ===== */
+@media (max-width: 767.98px) {
+    .stat-icon-neo {
+        display: none;
+    }
+    .stat-card-neo {
+        padding: .8rem .9rem;
+        gap: .5rem;
+        aspect-ratio: 1 / 1;
+        max-width: 190px;
+        max-height: 190px;
+        margin: 0 auto;
+        flex-direction: column;
+        justify-content: center;
+        text-align: center;
+    }
+    .stat-label-neo {
+        font-size: .64rem;
+    }
+    .stat-value-neo {
+        font-size: 1.1rem;
+    }
+    .stat-sub-neo {
+        font-size: .68rem;
+    }
+}
 
-        /* Tabel Detail Produksi Harian per Kandang: teks & padding dikecilkan
-           supaya banyak kolom kandang tetap muat rapi */
-        #pivotTable thead th {
-            font-size: .72rem;
-            padding: .5rem .4rem;
-            white-space: nowrap;
-        }
-        #pivotTable tbody td,
-        #pivotTable tfoot td {
-            font-size: .78rem;
-            padding: .45rem .4rem;
-        }
-        #pivotTable tbody td:first-child,
-        #pivotTable tfoot td:first-child {
-            white-space: nowrap;
-        }
-        #pivotTable th,
-        #pivotTable td {
-            vertical-align: middle;
-        }
+/* Kandang yang tidak dicentang: ditampilkan redup + dicoret, tapi tetap terlihat datanya */
+.kandang-excluded {
+    opacity: .35;
+    text-decoration: line-through;
+}
 
-        @media (max-width: 767.98px) {
-            #pivotTable thead th {
-                font-size: .62rem;
-                padding: .4rem .3rem;
-            }
-            #pivotTable tbody td,
-            #pivotTable tfoot td {
-                font-size: .68rem;
-                padding: .35rem .3rem;
-            }
-        }
- 
-        .pivot-scale-wrapper {
-            width: 100%;
-            overflow: hidden;
-        }
-        #pivotTable {
-            transform-origin: top left;
-            transition: transform .15s ease;
-            width: max-content; /* biar tabel tidak dipaksa menyempit sebelum di-scale, kolom tetap proporsional */
-        }
+/* Tabel Detail Produksi Harian per Kandang: teks & padding dikecilkan
+   supaya banyak kolom kandang tetap muat rapi */
+#pivotTable thead th {
+    font-size: .72rem;
+    padding: .5rem .4rem;
+    white-space: nowrap;
+}
+#pivotTable tbody td,
+#pivotTable tfoot td {
+    font-size: .78rem;
+    padding: .45rem .4rem;
+}
+#pivotTable tbody td:first-child,
+#pivotTable tfoot td:first-child {
+    white-space: nowrap;
+}
+#pivotTable th,
+#pivotTable td {
+    vertical-align: middle;
+}
+
+@media (max-width: 767.98px) {
+    #pivotTable thead th {
+        font-size: .62rem;
+        padding: .4rem .3rem;
+    }
+    #pivotTable tbody td,
+    #pivotTable tfoot td {
+        font-size: .68rem;
+        padding: .35rem .3rem;
+    }
+}
+
+/* ===== Wrapper tabel pivot: SCROLL horizontal, bukan scale/zoom.
+   Ini memastikan tabel selalu terkurung di dalam area putih (.main-content-neo)
+   dan tidak pernah bocor/numpuk ke konten lain seperti sebelumnya. ===== */
+.pivot-scale-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--radius);
+    display: flex;
+    justify-content: center;
+    justify-content: safe center;
+}
+#pivotTable {
+    width: max-content;
+    min-width: 100%;
+}
+
+/* Tabel lain (Produktivitas per Kandang, Top 5 Pembeli, dll) ikut di-tengah-kan
+   kalau lebarnya lebih kecil dari kolomnya; judul (h2/h5) tetap rata kiri seperti biasa */
+.table-responsive {
+    display: flex;
+    justify-content: center;
+    justify-content: safe center;
+}
+.table-responsive table {
+    width: 100%;
+    margin: 0 auto;
+}
+/* NAV TABS NEO */
+#kalkTabNav {
+    border-bottom: none;
+    gap: .5rem;
+}
+
+#kalkTabNav .nav-link {
+    font-family: var(--font-main);
+    font-weight: 700;
+    color: var(--color-dark);
+    background-color: var(--color-card);
+    border: var(--border-width) solid var(--color-border) !important;
+    border-radius: var(--radius) !important;
+    box-shadow: var(--shadow-small);
+    padding: .5rem .9rem;
+    margin-bottom: 0 !important;
+    transition: transform .1s ease, box-shadow .1s ease, background-color .15s ease;
+}
+
+#kalkTabNav .nav-link:hover {
+    transform: translate(-1px, -1px);
+}
+
+#kalkTabNav .nav-link.active {
+    background-color: var(--color-primary) !important;
+    box-shadow: var(--shadow) !important;
+}
+
+/* ALERT NEO */
+.alert-neo {
+    border: var(--border-width) solid var(--color-border) !important;
+    border-radius: var(--radius) !important;
+    box-shadow: var(--shadow-small);
+    font-family: var(--font-main);
+}
+
+.alert-neo.alert-info-neo   { background-color: #d6f0ff; }
+.alert-neo.alert-warning-neo{ background-color: #fff2c2; }
+.alert-neo.alert-secondary-neo{ background-color: var(--color-accent); }

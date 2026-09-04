@@ -37,19 +37,21 @@
                     <th>Tanggal</th>
                     <th>Nama Pembeli</th>
                     <th>Jumlah Telur</th>
+                    <th>Bonus</th>
                     <th>Total Harga</th>
                     <th class="text-end">Aksi</th>
                 </tr>
             </thead>
             <tbody id="tabelPenjualan">
                 <tr>
-                    <td colspan="5" class="text-center py-4">Memuat data...</td>
+                    <td colspan="6" class="text-center py-4">Memuat data...</td>
                 </tr>
             </tbody>
             <tfoot>
                 <tr class="fw-bold" style="border-top: 2px solid #000;">
                     <td colspan="2" class="text-end">Total</td>
                     <td id="totalJumlahTelur">0</td>
+                    <td id="totalBonus">0</td>
                     <td id="totalHarga">Rp 0</td>
                     <td></td>
                 </tr>
@@ -78,8 +80,14 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold">Jumlah Telur</label>
-                            <input type="number" class="form-control form-control-neo" id="jumlah_telur" min="1"
-                                required>
+                            <input type="number" class="form-control form-control-neo" id="jumlah_telur" min="0"
+                                value="0" required>
+                            <small class="text-muted">Isi 0 jika hanya untuk bonus / dipakai sendiri</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Bonus</label>
+                            <input type="number" class="form-control form-control-neo" id="bonus" min="0" value="0">
+                            <small class="text-muted">Isi jika ada telur bonus atau dipakai sendiri</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold">Total Harga</label>
@@ -134,17 +142,16 @@
             return 'Rp ' + Number(angka).toLocaleString('id-ID');
         }
 
-        // Ambil hanya "YYYY-MM-DD" walau backend kirim format lain (jaga-jaga)
         function formatTanggal(tgl) {
             return tgl ? tgl.substring(0, 10) : '-';
         }
 
-        // Hitung ulang baris Total di bawah tabel berdasarkan data yang SEDANG TAMPIL
-        // (jadi kalau lagi di-search, totalnya cuma menjumlahkan hasil pencarian itu saja)
         function renderTotalPenjualan(data) {
             const totalTelur = data.reduce((sum, p) => sum + (Number(p.jumlah_telur) || 0), 0);
+            const totalBonus = data.reduce((sum, p) => sum + (Number(p.bonus) || 0), 0);
             const totalRp = data.reduce((sum, p) => sum + (Number(p.total_harga) || 0), 0);
             document.getElementById('totalJumlahTelur').textContent = totalTelur.toLocaleString('id-ID');
+            document.getElementById('totalBonus').textContent = totalBonus.toLocaleString('id-ID');
             document.getElementById('totalHarga').textContent = formatRupiah(totalRp);
         }
 
@@ -152,8 +159,8 @@
             const tbody = document.getElementById('tabelPenjualan');
             if (!data.length) {
                 tbody.innerHTML =
-                    '<tr><td colspan="5" class="text-center py-4">Tidak ada data yang cocok</td></tr>';
-                renderTotalPenjualan(data); // tetap tampilkan Total = 0, bukan dikosongkan
+                    '<tr><td colspan="6" class="text-center py-4">Tidak ada data yang cocok</td></tr>';
+                renderTotalPenjualan(data);
                 return;
             }
             tbody.innerHTML = data.map(p => `
@@ -161,6 +168,7 @@
           <td>${formatTanggal(p.tanggal)}</td>
           <td>${p.nama_pembeli}</td>
           <td>${p.jumlah_telur}</td>
+          <td>${p.bonus ?? 0}</td>
           <td>${formatRupiah(p.total_harga)}</td>
           <td class="text-end">
             <button class="btn btn-neo btn-neo-secondary btn-neo-sm" onclick="bukaModalEdit(${p.id})">Edit</button>
@@ -203,6 +211,8 @@
             document.getElementById('formPenjualan').reset();
             document.getElementById('penjualan_id').value = '';
             document.getElementById('tanggal').value = new Date().toLocaleDateString('sv-SE');
+            document.getElementById('jumlah_telur').value = 0;
+            document.getElementById('bonus').value = 0;
             document.getElementById('modalPenjualanTitle').textContent = 'Tambah Penjualan';
             document.getElementById('errorPenjualan').textContent = '';
             modalPenjualan.show();
@@ -221,6 +231,7 @@
                     document.getElementById('tanggal').value = formatTanggal(p.tanggal);
                     document.getElementById('nama_pembeli').value = p.nama_pembeli;
                     document.getElementById('jumlah_telur').value = p.jumlah_telur;
+                    document.getElementById('bonus').value = p.bonus ?? 0;
                     document.getElementById('total_harga').value = p.total_harga;
                     document.getElementById('modalPenjualanTitle').textContent = 'Edit Penjualan';
                     document.getElementById('errorPenjualan').textContent = '';
@@ -250,6 +261,7 @@
                         tanggal: document.getElementById('tanggal').value,
                         nama_pembeli: document.getElementById('nama_pembeli').value,
                         jumlah_telur: document.getElementById('jumlah_telur').value,
+                        bonus: document.getElementById('bonus').value,
                         total_harga: document.getElementById('total_harga').value
                     })
                 })
@@ -268,7 +280,6 @@
                 });
         });
 
-        // Buka modal konfirmasi hapus (menggantikan confirm() bawaan browser)
         function bukaModalHapus(id, nama) {
             idPenjualanDihapus = id;
             document.getElementById('namaPenjualanHapus').textContent = nama;
@@ -276,7 +287,6 @@
             modalHapusPenjualan.show();
         }
 
-        // Jalan saat tombol "Ya, Hapus" di dalam modal diklik
         document.getElementById('btnKonfirmasiHapusPenjualan').addEventListener('click', function() {
             if (!idPenjualanDihapus) return;
 
@@ -307,11 +317,8 @@
                 });
         });
 
-        // Filter bulan/tahun berubah -> reload data dari server
         document.getElementById('filterBulan').addEventListener('change', muatPenjualan);
         document.getElementById('filterTahun').addEventListener('change', muatPenjualan);
-
-        // Search berubah -> filter data yang sudah ada di memori (tanpa reload server)
         document.getElementById('searchPembeli').addEventListener('input', filterDanRender);
 
         muatPenjualan();

@@ -24,7 +24,7 @@
                 77</span></a>
         <div class="sidebar-menu">
             <a href="{{ route('dashboard.index') }}"
-                class="sidebar-link {{ request()->routeIs('dashboard.*') ? 'active-neo' : '' }}">
+                class="sidebar-link {{ request()->routeIs('dashboard.*','kalkulator.*') ? 'active-neo' : '' }}">
                 <span class="icon"><i class="bi bi-speedometer2"></i></span> Dashboard
             </a>
             <a href="{{ route('kandang.index') }}"
@@ -47,6 +47,8 @@
                 class="sidebar-link {{ request()->routeIs('user.*') ? 'active-neo' : '' }}">
                 <span class="icon"><i class="bi bi-people"></i></span> Pengguna
             </a>
+            
+    
      <form id="formLogout" action="{{ route('logout') }}" method="POST" class="mt-2">
                 @csrf
                 <button type="submit" class="sidebar-link w-100 border-0 bg-transparent text-start">

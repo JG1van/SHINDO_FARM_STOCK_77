@@ -192,8 +192,9 @@
             </ul>
         </div>
 
-        <div class="actions">
-            <a href="javascript:history.back()" class="btn btn-primary" style="flex: 1 1 100%;">&#8592; Kembali</a>
+       <div class="actions">
+            <a href="javascript:history.back()" class="btn btn-primary">&#8592; Kembali</a>
+           <a href="{{ route('dashboard.index') }}" class="btn btn-secondary">Ke Dashboard</a>
         </div>
 
         <p class="footer">Error 419 &middot; Page Expired</p>

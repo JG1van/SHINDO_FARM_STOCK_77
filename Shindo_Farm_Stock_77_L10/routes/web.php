@@ -1,5 +1,4 @@
 <?php
-
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\KandangController;
 use App\Http\Controllers\TelurController;
@@ -8,6 +7,7 @@ use App\Http\Controllers\PengeluaranController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\KalkulatorController;
 
 // Login (guest only)
 Route::middleware('guest')->group(function () {
@@ -31,7 +31,5 @@ Route::middleware('auth')->group(function () {
     Route::resource('user', UserController::class);
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
     Route::get('/dashboard/export-excel', [DashboardController::class, 'exportExcel'])->name('dashboard.export');
-    Route::get('/test-error/{code}', function ($code) {
-    abort((int) $code);
-});
+    Route::get('/kalkulator', [KalkulatorController::class, 'index'])->name('kalkulator.index');
 });

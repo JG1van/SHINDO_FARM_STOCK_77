@@ -37,15 +37,17 @@ class PenjualanController extends Controller
             [
                 'tanggal' => 'required|date',
                 'nama_pembeli' => 'required|string|max:100',
-                'jumlah_telur' => 'required|integer|min:1',
+                'jumlah_telur' => 'required|integer|min:0',
                 'total_harga' => 'required|numeric|min:0',
+                'bonus' => 'nullable|numeric|min:0',
             ],
             [
                 'tanggal.required' => 'Tanggal wajib diisi.',
                 'nama_pembeli.required' => 'Nama pembeli wajib diisi.',
                 'jumlah_telur.required' => 'Jumlah telur wajib diisi.',
-                'jumlah_telur.min' => 'Jumlah telur minimal 1.',
+                'jumlah_telur.min' => 'Jumlah telur minimal 0.',
                 'total_harga.required' => 'Total harga wajib diisi.',
+                'bonus.numeric' => 'Bonus harus berupa angka.',
             ]
         );
 
@@ -57,7 +59,7 @@ class PenjualanController extends Controller
         }
 
         try {
-            $penjualan = Penjualan::create($request->only(['tanggal', 'nama_pembeli', 'jumlah_telur', 'total_harga']));
+            $penjualan = Penjualan::create($request->only(['tanggal', 'nama_pembeli', 'jumlah_telur', 'total_harga', 'bonus']));
             return response()->json([
                 'success' => true,
                 'message' => 'Penjualan berhasil dicatat.',
@@ -101,15 +103,17 @@ class PenjualanController extends Controller
             [
                 'tanggal' => 'required|date',
                 'nama_pembeli' => 'required|string|max:100',
-                'jumlah_telur' => 'required|integer|min:1',
+                'jumlah_telur' => 'required|integer|min:0',
                 'total_harga' => 'required|numeric|min:0',
+                'bonus' => 'nullable|numeric|min:0',
             ],
             [
                 'tanggal.required' => 'Tanggal wajib diisi.',
                 'nama_pembeli.required' => 'Nama pembeli wajib diisi.',
                 'jumlah_telur.required' => 'Jumlah telur wajib diisi.',
-                'jumlah_telur.min' => 'Jumlah telur minimal 1.',
+                'jumlah_telur.min' => 'Jumlah telur minimal 0.',
                 'total_harga.required' => 'Total harga wajib diisi.',
+                'bonus.numeric' => 'Bonus harus berupa angka.',
             ]
         );
 
@@ -121,7 +125,7 @@ class PenjualanController extends Controller
         }
 
         try {
-            $penjualan->update($request->only(['tanggal', 'nama_pembeli', 'jumlah_telur', 'total_harga']));
+            $penjualan->update($request->only(['tanggal', 'nama_pembeli', 'jumlah_telur', 'total_harga', 'bonus']));
             return response()->json([
                 'success' => true,
                 'message' => 'Penjualan berhasil diperbarui.',
