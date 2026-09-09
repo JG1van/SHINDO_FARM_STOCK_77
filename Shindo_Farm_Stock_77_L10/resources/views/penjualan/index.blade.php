@@ -163,6 +163,7 @@
                 renderTotalPenjualan(data);
                 return;
             }
+            const printUrl = "{{ route('penjualan.print', ':id') }}";
             tbody.innerHTML = data.map(p => `
         <tr>
           <td>${formatTanggal(p.tanggal)}</td>
@@ -171,6 +172,7 @@
           <td>${p.bonus ?? 0}</td>
           <td>${formatRupiah(p.total_harga)}</td>
           <td class="text-end">
+            <a href="${printUrl.replace(':id', p.id)}" target="_blank" class="btn btn-neo btn-neo-info btn-neo-sm">Print</a>
             <button class="btn btn-neo btn-neo-secondary btn-neo-sm" onclick="bukaModalEdit(${p.id})">Edit</button>
             <button class="btn btn-neo btn-neo-danger btn-neo-sm" onclick="bukaModalHapus(${p.id}, '${p.nama_pembeli}')">Hapus</button>
           </td>

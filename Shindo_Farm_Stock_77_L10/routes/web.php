@@ -27,6 +27,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('kandang', KandangController::class);
     Route::resource('telur', TelurController::class);
     Route::resource('penjualan', PenjualanController::class);
+    Route::get('/penjualan/{id}/print', [PenjualanController::class, 'print'])->name('penjualan.print');
     Route::resource('pengeluaran', PengeluaranController::class);
     Route::resource('user', UserController::class);
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');

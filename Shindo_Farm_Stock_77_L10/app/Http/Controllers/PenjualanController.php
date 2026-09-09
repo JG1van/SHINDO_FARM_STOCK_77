@@ -162,4 +162,10 @@ class PenjualanController extends Controller
             ], 500);
         }
     }
+
+    public function print($id)
+    {
+        $penjualan = Penjualan::findOrFail($id);
+        return view('penjualan.nota', compact('penjualan'));
+    }
 }
