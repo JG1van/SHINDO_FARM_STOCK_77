@@ -15,6 +15,8 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 class DashboardController extends Controller
 {
+    public const ALLOWED_ROLES = ['super_admin', 'admin', 'staf_ayam', 'staf_keuangan'];
+
     public function index(Request $request)
     {
         $bulan = (int) $request->input('bulan', now()->month);

@@ -22,6 +22,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
     ];
 
     /**
@@ -45,5 +46,65 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Get role label.
+     */
+    public function getRoleLabel(): string
+    {
+        $roles = config('roles.roles');
+        return $roles[$this->role]['label'] ?? $this->role;
+    }
+
+    /**
+     * Get role badge color class.
+     */
+    public function getRoleBadge(): string
+    {
+        $roles = config('roles.roles');
+        return 'bg-' . ($roles[$this->role]['badge'] ?? 'secondary');
+    }
+
+    /**
+     * Get role text color class.
+     */
+    public function getRoleTextColor(): string
+    {
+        $roles = config('roles.roles');
+        return 'text-' . ($roles[$this->role]['color'] ?? '#6c757d');
+    }
+
+    /**
+     * Get role icon.
+     */
+    public function getRoleIcon(): string
+    {
+        $roles = config('roles.roles');
+        return $roles[$this->role]['icon'] ?? 'bi-person';
+    }
+
+    /**
+     * Check if user has any of the given roles.
+     */
+    public function hasAnyRole(string ... $roles): bool
+    {
+        return in_array($this->role, $roles);
+    }
+
+    /**
+     * Check if user is super_admin.
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'super_admin';
+    }
+
+    /**
+     * Check if user is admin or above.
+     */
+    public function isAdminOrAbove(): bool
+    {
+        return in_array($this->role, ['super_admin', 'admin']);
     }
 }

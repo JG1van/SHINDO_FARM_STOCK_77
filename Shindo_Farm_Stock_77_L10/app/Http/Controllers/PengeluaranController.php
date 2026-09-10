@@ -10,6 +10,8 @@ use Carbon\Carbon;
 
 class PengeluaranController extends Controller
 {
+    public const ALLOWED_ROLES = ['super_admin', 'admin', 'staf_keuangan'];
+
     public function index(Request $request)
     {
         $bulan = (int) $request->input('bulan', now()->month);

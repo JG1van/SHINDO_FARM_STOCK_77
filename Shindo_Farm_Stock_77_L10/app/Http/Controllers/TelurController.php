@@ -10,6 +10,8 @@ use Illuminate\Database\QueryException;
 
 class TelurController extends Controller
 {
+    public const ALLOWED_ROLES = ['super_admin', 'admin', 'staf_ayam'];
+
     public function index(Request $request)
     {
         $bulan = (int) $request->input('bulan', now()->month);

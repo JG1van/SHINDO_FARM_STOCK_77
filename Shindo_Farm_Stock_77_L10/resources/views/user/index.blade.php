@@ -14,12 +14,13 @@
                 <tr>
                     <th>Nama</th>
                     <th>Email</th>
+                    <th>Role</th>
                     <th class="text-end">Aksi</th>
                 </tr>
             </thead>
             <tbody id="tabelUser">
                 <tr>
-                    <td colspan="3" class="text-center py-4">Memuat data...</td>
+                    <td colspan="4" class="text-center py-4">Memuat data...</td>
                 </tr>
             </tbody>
         </table>
@@ -49,6 +50,14 @@
                             <input type="password" class="form-control form-control-neo" id="password">
                             <small class="text-muted" id="passwordHint">Kosongkan jika tidak ingin mengubah
                                 password</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Role</label>
+                            <select class="form-control form-control-neo" id="role" required>
+                                @foreach (config('roles.roles') as $key => $meta)
+                                    <option value="{{ $key }}">{{ $meta['label'] }}</option>
+                                @endforeach
+                            </select>
                         </div>
                         <div id="errorUser" class="text-danger small"></div>
                     </div>
@@ -91,7 +100,16 @@
         const userBaseUrl = "{{ route('user.index') }}";
         const modalUser = new bootstrap.Modal(document.getElementById('modalUser'));
         const modalHapusUser = new bootstrap.Modal(document.getElementById('modalHapusUser'));
+        const roleMetas = @json(config('roles.roles'));
         let idUserDihapus = null;
+
+        function badgeRole(role) {
+            const meta = roleMetas[role] || {
+                label: role,
+                badge: 'secondary'
+            };
+            return `<span class="badge bg-${meta.badge}">${meta.label}</span>`;
+        }
 
         function muatUser() {
             fetch(userBaseUrl, {
@@ -104,13 +122,14 @@
                     const tbody = document.getElementById('tabelUser');
                     if (!res.data.length) {
                         tbody.innerHTML =
-                            '<tr><td colspan="3" class="text-center py-4">Belum ada data user</td></tr>';
+                            '<tr><td colspan="4" class="text-center py-4">Belum ada data user</td></tr>';
                         return;
                     }
                     tbody.innerHTML = res.data.map(u => `
         <tr>
           <td>${u.name}</td>
           <td>${u.email}</td>
+          <td>${badgeRole(u.role)}</td>
           <td class="text-end">
             <button class="btn btn-neo btn-neo-secondary btn-neo-sm" onclick="bukaModalEdit(${u.id})">Edit</button>
             <button class="btn btn-neo btn-neo-danger btn-neo-sm" onclick="bukaModalHapus(${u.id}, '${u.name}')">Hapus</button>
@@ -123,6 +142,7 @@
         function bukaModalTambah() {
             document.getElementById('formUser').reset();
             document.getElementById('user_id').value = '';
+            document.getElementById('role').value = 'admin';
             document.getElementById('modalUserTitle').textContent = 'Tambah User';
             document.getElementById('password').required = true;
             document.getElementById('passwordHint').classList.add('d-none');
@@ -143,6 +163,7 @@
                     document.getElementById('name').value = u.name;
                     document.getElementById('email').value = u.email;
                     document.getElementById('password').value = '';
+                    document.getElementById('role').value = u.role || 'admin';
                     document.getElementById('password').required = false;
                     document.getElementById('passwordHint').classList.remove('d-none');
                     document.getElementById('modalUserTitle').textContent = 'Edit User';
@@ -172,7 +193,8 @@
                     body: JSON.stringify({
                         name: document.getElementById('name').value,
                         email: document.getElementById('email').value,
-                        password: document.getElementById('password').value
+                        password: document.getElementById('password').value,
+                        role: document.getElementById('role').value
                     })
                 })
                 .then(res => res.json())

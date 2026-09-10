@@ -9,6 +9,8 @@ use Illuminate\Database\QueryException;
 
 class KandangController extends Controller
 {
+    public const ALLOWED_ROLES = ['super_admin', 'admin', 'staf_ayam'];
+
     public function index(Request $request)
     {
         if ($request->ajax()) {

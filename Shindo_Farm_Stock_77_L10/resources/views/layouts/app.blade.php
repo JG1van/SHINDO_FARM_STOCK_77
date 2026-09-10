@@ -23,33 +23,72 @@
         <a href="{{ route('kandang.index') }}" class="sidebar-brand "> SHINDO-FARM-<span style="color:#e8871e">
                 77</span></a>
         <div class="sidebar-menu">
-            <a href="{{ route('dashboard.index') }}"
-                class="sidebar-link {{ request()->routeIs('dashboard.*','kalkulator.*') ? 'active-neo' : '' }}">
-                <span class="icon"><i class="bi bi-speedometer2"></i></span> Dashboard
-            </a>
-            <a href="{{ route('kandang.index') }}"
-                class="sidebar-link {{ request()->routeIs('kandang.*') ? 'active-neo' : '' }}">
-                <span class="icon"><i class="bi bi-house-door"></i></span> Kandang
-            </a>
-            <a href="{{ route('telur.index') }}"
-                class="sidebar-link {{ request()->routeIs('telur.*') ? 'active-neo' : '' }}">
-                <span class="icon"><i class="bi bi-egg"></i></span> Telur
-            </a>
-            <a href="{{ route('penjualan.index') }}"
-                class="sidebar-link {{ request()->routeIs('penjualan.*') ? 'active-neo' : '' }}">
-                <span class="icon"><i class="bi bi-cash-coin"></i></span> Penjualan
-            </a>
-            <a href="{{ route('pengeluaran.index') }}"
-                class="sidebar-link {{ request()->routeIs('pengeluaran.*') ? 'active-neo' : '' }}">
-                <span class="icon"><i class="bi bi-graph-down-arrow"></i></span> Pengeluaran
-            </a>
-            <a href="{{ route('user.index') }}"
-                class="sidebar-link {{ request()->routeIs('user.*') ? 'active-neo' : '' }}">
-                <span class="icon"><i class="bi bi-people"></i></span> Pengguna
-            </a>
-            
-    
-     <form id="formLogout" action="{{ route('logout') }}" method="POST" class="mt-2">
+            @php
+                $userRole = auth()->user()->role ?? '';
+                // Daftar menu sidebar + role yang boleh melihatnya.
+                // Label/warna/badge role terpusat di config('roles.roles').
+                $sidebarMenus = [
+                    [
+                        'label' => 'Dashboard',
+                        'route' => 'dashboard.index',
+                        'icon' => 'bi-speedometer2',
+                        'active' => ['dashboard.*', 'kalkulator.*'],
+                        'roles' => ['super_admin', 'admin', 'staf_ayam', 'staf_keuangan'],
+                    ],
+                    [
+                        'label' => 'Kandang',
+                        'route' => 'kandang.index',
+                        'icon' => 'bi-house-door',
+                        'active' => ['kandang.*'],
+                        'roles' => ['super_admin', 'admin', 'staf_ayam'],
+                    ],
+                    [
+                        'label' => 'Telur',
+                        'route' => 'telur.index',
+                        'icon' => 'bi-egg',
+                        'active' => ['telur.*'],
+                        'roles' => ['super_admin', 'admin', 'staf_ayam'],
+                    ],
+                    [
+                        'label' => 'Penjualan',
+                        'route' => 'penjualan.index',
+                        'icon' => 'bi-cash-coin',
+                        'active' => ['penjualan.*'],
+                        'roles' => ['super_admin', 'admin', 'staf_keuangan'],
+                    ],
+                    [
+                        'label' => 'Pengeluaran',
+                        'route' => 'pengeluaran.index',
+                        'icon' => 'bi-graph-down-arrow',
+                        'active' => ['pengeluaran.*'],
+                        'roles' => ['super_admin', 'admin', 'staf_keuangan'],
+                    ],
+                    [
+                        'label' => 'Pengguna',
+                        'route' => 'user.index',
+                        'icon' => 'bi-people',
+                        'active' => ['user.*'],
+                        'roles' => ['super_admin'],
+                    ],
+                ];
+                $roleMeta = config('roles.roles')[$userRole] ?? null;
+            @endphp
+            @if ($roleMeta)
+                <div class="px-3 mt-2 mb-2 text-center">
+                    <span class="badge bg-{{ $roleMeta['badge'] }} w-100 py-2 fs-6">
+                        <i class="bi {{ $roleMeta['icon'] }}"></i> {{ $roleMeta['label'] }}
+                    </span>
+                </div>
+            @endif
+            @foreach ($sidebarMenus as $menu)
+                @if (in_array($userRole, $menu['roles']))
+                    <a href="{{ route($menu['route']) }}"
+                        class="sidebar-link {{ request()->routeIs(...$menu['active']) ? 'active-neo' : '' }}">
+                        <span class="icon"><i class="bi {{ $menu['icon'] }}"></i></span> {{ $menu['label'] }}
+                    </a>
+                @endif
+            @endforeach
+            <form id="formLogout" action="{{ route('logout') }}" method="POST" class="mt-2">
                 @csrf
                 <button type="submit" class="sidebar-link w-100 border-0 bg-transparent text-start">
                     <span class="icon"><i class="bi bi-box-arrow-right"></i></span> Logout

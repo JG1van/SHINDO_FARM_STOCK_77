@@ -165,6 +165,31 @@
         <h1>Akses ditolak</h1>
         <p class="desc">Kamu tidak memiliki izin untuk membuka halaman ini.<br>Ini bukan kesalahan sistem — halamannya ada, tapi tidak bisa diakses.</p>
 
+        @php
+            $roleMetas = config('roles.roles', []);
+            $userRoleMeta = $roleMetas[$userRole ?? ''] ?? null;
+        @endphp
+        @if ($userRoleMeta || !empty($allowedRoles))
+            <div class="section">
+                <p class="section-label">Role kamu</p>
+                <p style="margin-bottom:0.6rem;">
+                    @if ($userRoleMeta)
+                        <span class="e-code">{{ $userRoleMeta['label'] }}</span>
+                    @else
+                        <span class="e-code">{{ $userRole ?? '-' }}</span>
+                    @endif
+                </p>
+                @if (!empty($allowedRoles))
+                    <p class="section-label">Halaman ini khusus untuk</p>
+                    <p style="margin-bottom:0;">
+                        @foreach ($allowedRoles as $r)
+                            <span class="e-code" style="margin-right:4px;">{{ $roleMetas[$r]['label'] ?? $r }}</span>
+                        @endforeach
+                    </p>
+                @endif
+            </div>
+        @endif
+
         <div class="trigger-box">
             <p class="trigger-label">Kenapa ini terjadi?</p>
             <ul class="trigger-list">

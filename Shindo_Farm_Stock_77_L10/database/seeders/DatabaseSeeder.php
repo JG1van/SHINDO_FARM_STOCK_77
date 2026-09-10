@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Admin Shindo Farm',
             'email' => 'gian123ivan@gmail.com',
             'password' => 'admin-77', // otomatis di-hash oleh cast 'password' => 'hashed' di Model User
+            'role' => 'super_admin',
         ]);
     }
 }
