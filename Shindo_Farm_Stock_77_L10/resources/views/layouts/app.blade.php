@@ -70,6 +70,13 @@
                         'active' => ['user.*'],
                         'roles' => ['super_admin'],
                     ],
+                    [
+                        'label' => 'Profil',
+                        'route' => 'profil.index',
+                        'icon' => 'bi-person-circle',
+                        'active' => ['profil.*'],
+                        'roles' => ['super_admin', 'admin', 'staf_ayam', 'staf_keuangan'],
+                    ],
                 ];
                 $roleMeta = config('roles.roles')[$userRole] ?? null;
             @endphp

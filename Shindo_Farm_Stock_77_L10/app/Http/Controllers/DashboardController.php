@@ -92,15 +92,30 @@ class DashboardController extends Controller
         // dirender di view — mengurangi komputasi percuma. 'kandang_id' ditambahkan (bukan dihapus
         // dari daftar semula) supaya baris tabel di view bisa disinkronkan dengan checkbox filter
         // kandang (FIX MASALAH 4).
-        $produktivitasKandang = $kandangs->map(function ($k) use ($totalPerKandang, $rataRataPerKandang) {
+        $produktivitasKandang = $kandangs->map(function ($k) use ($totalPerKandang, $rataRataPerKandang, $daysInMonth) {
+            $betina = (int) ($k->betina ?? 0);
+            $target = $betina * $daysInMonth; // target bulanan = betina x jumlah hari
             return [
                 'kandang_id'       => $k->id,
                 'nama'             => $k->nama,
                 'jenis_ayam'       => $k->jenis_ayam,
+                'jantan'           => (int) ($k->jantan ?? 0),
+                'betina'           => $betina,
                 'total_telur'      => $totalPerKandang[$k->id] ?? 0,
                 'rata_rata_harian' => $rataRataPerKandang[$k->id] ?? 0,
+                'target'           => $target,
             ];
-        })->sortByDesc('total_telur')->values();
+        })
+            // Kandang 0 jantan + 0 betina (kiriman tempat lain) tidak ditampilkan
+            ->filter(fn ($p) => ($p['jantan'] + $p['betina']) > 0)
+            ->map(function ($p) {
+                $p['persen'] = $p['target'] > 0
+                    ? round($p['total_telur'] / $p['target'] * 100, 1)
+                    : 0;
+                $p['persen_warna'] = $p['persen'] >= 100 ? '#198754' : ($p['persen'] >= 70 ? '#e8871e' : ($p['persen'] >= 50 ? '#fd7e14' : '#dc3545'));
+                return $p;
+            })
+            ->sortByDesc('total_telur')->values();
 
         // ===== 5. Top 5 pembeli & rata-rata harga per butir =====
         $topPembeli = Penjualan::selectRaw('nama_pembeli, SUM(total_harga) as total_belanja, SUM(jumlah_telur) as total_butir')

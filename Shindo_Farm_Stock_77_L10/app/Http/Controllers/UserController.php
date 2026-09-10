@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Models\ActivityLog;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Hash;
@@ -190,5 +191,134 @@ class UserController extends Controller
                 'message' => 'Gagal menghapus user: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function resetPassword($id)
+    {
+        $user = User::find($id);
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User tidak ditemukan.',
+            ], 404);
+        }
+
+        // Proteksi: tidak bisa reset password akun sendiri dari sini
+        if ($user->id === auth()->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gunakan menu Profil untuk mengubah password sendiri.',
+            ], 409);
+        }
+
+        try {
+            $user->update(['password' => Hash::make('ADMIN77')]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Password {$user->name} berhasil direset ke 'ADMIN77'.",
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mereset password: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function statistics($id)
+    {
+        $user = User::find($id);
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User tidak ditemukan.',
+            ], 404);
+        }
+
+        // 12 bulan terakhir (termasuk bulan berjalan)
+        $months = [];
+        for ($i = 11; $i >= 0; $i--) {
+            $date = now()->subMonths($i);
+            $months[] = [
+                'label' => $date->translatedFormat('M Y'),
+                'year' => (int) $date->format('Y'),
+                'month' => (int) $date->format('m'),
+            ];
+        }
+
+        // Jumlah aktivitas per model per bulan (dari activity_logs)
+        $models = ['Kandang', 'Telur', 'Penjualan', 'Pengeluaran', 'User'];
+        $stats = [];
+        foreach ($models as $model) {
+            $row = [];
+            foreach ($months as $m) {
+                $row[] = ActivityLog::where('user_id', $user->id)
+                    ->where('logable_type', $model)
+                    ->whereYear('created_at', $m['year'])
+                    ->whereMonth('created_at', $m['month'])
+                    ->count();
+            }
+            $stats[$model] = $row;
+        }
+
+        $total = ActivityLog::where('user_id', $user->id)->count();
+
+        // 5 aktivitas terbaru
+        $recent = ActivityLog::where('user_id', $user->id)
+            ->latest()
+            ->take(5)
+            ->get(['action', 'logable_type as model', 'description', 'created_at']);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email],
+                'labels' => array_column($months, 'label'),
+                'stats' => $stats,
+                'total' => $total,
+                'recent' => $recent,
+            ],
+        ]);
+    }
+
+    public function activityHistory(Request $request)
+    {
+        $bulan = (int) $request->input('bulan', now()->month);
+        $tahun = (int) $request->input('tahun', now()->year);
+
+        // Ambil SEMUA log tanpa filter user, join users untuk nama
+        $logs = ActivityLog::select('activity_logs.*')
+            ->leftJoin('users', 'activity_logs.user_id', '=', 'users.id')
+            ->selectRaw('activity_logs.id, activity_logs.user_id, activity_logs.action, activity_logs.logable_type as model, activity_logs.description, activity_logs.created_at, users.name as user_name')
+            ->whereYear('activity_logs.created_at', $tahun)
+            ->whereMonth('activity_logs.created_at', $bulan)
+            ->orderBy('activity_logs.created_at', 'desc')
+            ->paginate(20);
+
+        // Daftar bulan yang punya data
+        $availableMonths = ActivityLog::selectRaw('YEAR(created_at) as year, MONTH(created_at) as month')
+            ->groupByRaw('YEAR(created_at), MONTH(created_at)')
+            ->orderByDesc('year')
+            ->orderByDesc('month')
+            ->get()
+            ->map(function ($row) {
+                $dt = \Carbon\Carbon::createFromDate($row->year, $row->month, 1);
+                return [
+                    'year'  => $row->year,
+                    'month' => $row->month,
+                    'label' => $dt->translatedFormat('F Y'),
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'logs'            => $logs,
+                'availableMonths' => $availableMonths,
+                'currentMonth'    => $bulan,
+                'currentYear'     => $tahun,
+            ],
+        ]);
     }
 }

@@ -12,6 +12,14 @@ class PenjualanController extends Controller
 {
     public const ALLOWED_ROLES = ['super_admin', 'admin', 'staf_keuangan'];
 
+    public function __construct()
+    {
+        // Cek role untuk semua method KECUALI print (nota publik tanpa login)
+        $this->middleware(function ($request, $next) {
+            return $this->checkRoleAccess($request) ?? $next($request);
+        }, ['except' => ['print']]);
+    }
+
     public function index(Request $request)
     {
         $bulan = (int) $request->input('bulan', now()->month);

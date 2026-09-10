@@ -227,18 +227,20 @@
         </div>
     </div>
 
-    <div class="row g-4 mb-4">
+    <div class="row g-3 mb-4">
         <!-- Perbandingan Antar Kandang -->
-        <div class="col-lg-6">
-            <h5 class="fw-bold mb-3">Produktivitas per Kandang</h5>
+        <div class="col-7">
+            <h6 class="fw-bold mb-2">Produktivitas per Kandang</h6>
             <div class="table-responsive">
-                <table class="table table-neo align-middle mb-0" id="produktivitasTable">
+                <table class="table table-neo align-middle mb-0 tabel-kecil" id="produktivitasTable">
                     <thead>
                         <tr>
                             <th>Kandang</th>
                             <th>Jenis</th>
-                            <th>Telur (butir)</th>
-                            <th>Rata-rata/hari</th>
+                            <th>Telur</th>
+                            <th>Rata²/hr</th>
+                            <th>Target</th>
+                            <th>%</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -248,10 +250,13 @@
                                 <td>{{ $p['jenis_ayam'] }}</td>
                                 <td>{{ number_format($p['total_telur']) }}</td>
                                 <td>{{ number_format($p['rata_rata_harian'], 1) }}</td>
+                                <td>{{ number_format($p['target']) }}</td>
+                                <td class="fw-bold" style="color:{{ $p['persen_warna'] }}">
+                                    {{ number_format($p['persen'], 1) }}%</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="text-center py-3">Belum ada data kandang</td>
+                                <td colspan="6" class="text-center py-3">Belum ada data kandang</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -260,15 +265,15 @@
         </div>
 
         <!-- Top Pembeli -->
-        <div class="col-lg-6">
-            <h5 class="fw-bold mb-3">Top 5 Pembeli</h5>
+        <div class="col-5">
+            <h6 class="fw-bold mb-2">Top 5 Pembeli</h6>
             <div class="table-responsive">
-                <table class="table table-neo align-middle mb-0">
+                <table class="table table-neo align-middle mb-0 tabel-kecil">
                     <thead>
                         <tr>
                             <th>Nama</th>
-                            <th>Total Butir</th>
-                            <th>Total Belanja</th>
+                            <th>Butir</th>
+                            <th>Belanja</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -286,7 +291,6 @@
                     </tbody>
                 </table>
             </div>
-           
         </div>
     </div>
 
@@ -561,6 +565,20 @@
         #produktivitasTable tbody tr.kandang-excluded {
             opacity: 0.4;
             text-decoration: line-through;
+        }
+
+        /* Perkecil tulisan tabel Produktivitas & Top Pembeli */
+        .tabel-kecil {
+            font-size: 0.62rem;
+            table-layout: fixed;
+            width: 100%;
+        }
+        .tabel-kecil th,
+        .tabel-kecil td {
+            padding: 0.25rem 0.3rem;
+            white-space: normal;
+            word-break: break-word;
+            line-height: 1.15;
         }
     </style>
 @endsection
