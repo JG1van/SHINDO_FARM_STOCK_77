@@ -17,6 +17,12 @@ class DashboardController extends Controller
 {
     public const ALLOWED_ROLES = ['super_admin', 'admin', 'staf_ayam', 'staf_keuangan'];
 
+    public const NAMA_BULAN = [
+        1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+        5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+        9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
+    ];
+
     public function index(Request $request)
     {
         $bulan = (int) $request->input('bulan', now()->month);
@@ -24,77 +30,72 @@ class DashboardController extends Controller
 
         $kandangs = Kandang::orderBy('nama')->get();
 
-        // ===== 1. Produksi (pivot, total, rata-rata) — logic ditarik ke hitungProduksi() [FIX MASALAH 3] =====
-        [
-            'fullPivot'              => $fullPivot,
-            'daysInMonth'            => $daysInMonth,
-            'totalPerKandang'        => $totalPerKandang,
-            'grandTotalProduksi'     => $grandTotalProduksi,
-            'hariPembagi'            => $hariPembagi,
-            'rataRataHarianProduksi' => $rataRataHarianProduksi,
-            'rataRataPerKandang'     => $rataRataPerKandang,
-            'chartProduksiPerKandang' => $chartProduksiPerKandang,
-        ] = $this->hitungProduksi($bulan, $tahun, $kandangs);
-
-        // ===== 2. KPI Cards =====
+        // =====================================================================
+        // A. RINGKASAN KESELURUHAN (tidak terikat bulan)
+        // =====================================================================
         $totalAyam   = $kandangs->sum(fn ($k) => $k->jantan + $k->betina);
         $totalJantan = $kandangs->sum('jantan');
         $totalBetina = $kandangs->sum('betina');
 
-        // Ringkasan finansial: FIX MASALAH 6 — pakai pendekatan collection->sum() sama seperti
-        // exportExcel(), supaya konsisten dan collection-nya bisa dipakai ulang kalau perlu detail transaksi.
-        $penjualans   = Penjualan::whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun)->get();
-        $pengeluarans = Pengeluaran::whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun)->get();
+        $omzetTotal       = (float) Penjualan::sum('total_harga');
+        $pengeluaranTotal = (float) Pengeluaran::sum('jumlah');
+        $uangTersedia     = $omzetTotal - $pengeluaranTotal;
 
-        $omzetBulanIni        = $penjualans->sum(fn ($p) => $p->total_harga ?? 0);
-        $telurTerjualBulanIni = (int) $penjualans->sum(fn ($p) => $p->jumlah_telur ?? 0);
-        $bonusBulanIni        = (int) $penjualans->sum(fn ($p) => $p->bonus ?? 0);
-        $pengeluaranBulanIni  = $pengeluarans->sum(fn ($p) => $p->jumlah ?? 0);
+        // =====================================================================
+        // B. KARTU TELUR + RINCIAN DATA BULAN (mengikuti bulan/tahun terpilih)
+        // =====================================================================
+        [
+            'fullPivot'               => $fullPivot,
+            'daysInMonth'             => $daysInMonth,
+            'totalPerKandang'         => $totalPerKandang,
+            'grandTotalProduksi'      => $grandTotalProduksi,
+            'hariPembagi'             => $hariPembagi,
+            'rataRataHarianProduksi'  => $rataRataHarianProduksi,
+            'rataRataPerKandang'      => $rataRataPerKandang,
+            'chartProduksiPerKandang' => $chartProduksiPerKandang,
+        ] = $this->hitungProduksi($bulan, $tahun, $kandangs);
 
-        $labaBersih = $omzetBulanIni - $pengeluaranBulanIni;
+        $ringkasanBulan = $this->ringkasanTelur($bulan, $tahun);
+        $telurTerjualBulanIni = $ringkasanBulan['terjual'];
+        $bonusBulanIni        = $ringkasanBulan['bonus'];
 
-        // Stok belum terjual memperhitungkan telur yang keluar sebagai bonus juga
+        // Belum terjual per bulan: produksi - terjual - bonus (bulan terpilih saja)
         $stokBelumTerjual = $grandTotalProduksi - $telurTerjualBulanIni - $bonusBulanIni;
 
-        // ===== 3. Grafik tren harian (produksi vs penjualan vs pengeluaran) =====
+        // Keuangan bulan terpilih (tampil di dalam kartu Telur)
+        $penjualanBulanIni   = $ringkasanBulan['penjualan'];
+        $pengeluaranBulanIni = $ringkasanBulan['pengeluaran'];
+        $uangBulanIni        = $ringkasanBulan['uang'];
+
+        // Bulan sebelumnya (klik kartu -> tampil bulan kemarin)
+        $tglLalu = Carbon::createFromDate($tahun, $bulan, 1)->subMonthNoOverflow();
+        $ringkasanLalu = $this->ringkasanTelur($tglLalu->month, $tglLalu->year);
+        $labelBulan     = self::NAMA_BULAN[$bulan] . ' ' . $tahun;
+        $labelBulanLalu = self::NAMA_BULAN[$tglLalu->month] . ' ' . $tglLalu->year;
+
+        // Grafik tren harian bulan terpilih
         $penjualanHarian = Penjualan::selectRaw('tanggal, SUM(total_harga) as total')
-            ->whereMonth('tanggal', $bulan)
-            ->whereYear('tanggal', $tahun)
-            ->groupBy('tanggal')
-            ->pluck('total', 'tanggal');
+            ->whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun)
+            ->groupBy('tanggal')->pluck('total', 'tanggal');
 
         $pengeluaranHarian = Pengeluaran::selectRaw('tanggal, SUM(jumlah) as total')
-            ->whereMonth('tanggal', $bulan)
-            ->whereYear('tanggal', $tahun)
-            ->groupBy('tanggal')
-            ->pluck('total', 'tanggal');
+            ->whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun)
+            ->groupBy('tanggal')->pluck('total', 'tanggal');
 
-        $produksiHarian = Telur::selectRaw('tanggal, SUM(jumlah_butir) as total')
-            ->whereMonth('tanggal', $bulan)
-            ->whereYear('tanggal', $tahun)
-            ->groupBy('tanggal')
-            ->pluck('total', 'tanggal');
-
-        $tanggalList = array_keys($fullPivot);
         $chartLabels = [];
         $chartProduksi = [];
         $chartPenjualan = [];
         $chartPengeluaran = [];
-        foreach ($tanggalList as $tgl) {
+        foreach ($fullPivot as $tgl => $row) {
             $chartLabels[]      = Carbon::parse($tgl)->format('d');
-            $chartProduksi[]    = (int) ($produksiHarian[$tgl] ?? 0);
+            $chartProduksi[]    = (int) array_sum($row);
             $chartPenjualan[]   = (float) ($penjualanHarian[$tgl] ?? 0);
             $chartPengeluaran[] = (float) ($pengeluaranHarian[$tgl] ?? 0);
         }
 
-        // ===== 4. Perbandingan antar kandang (produktivitas) =====
-        // FIX MASALAH 5: field jantan, betina, rasio_label, rasio_warn DIHAPUS karena tidak pernah
-        // dirender di view — mengurangi komputasi percuma. 'kandang_id' ditambahkan (bukan dihapus
-        // dari daftar semula) supaya baris tabel di view bisa disinkronkan dengan checkbox filter
-        // kandang (FIX MASALAH 4).
+        // Produktivitas per kandang
         $produktivitasKandang = $kandangs->map(function ($k) use ($totalPerKandang, $rataRataPerKandang, $daysInMonth) {
             $betina = (int) ($k->betina ?? 0);
-            $target = $betina * $daysInMonth; // target bulanan = betina x jumlah hari
             return [
                 'kandang_id'       => $k->id,
                 'nama'             => $k->nama,
@@ -103,109 +104,189 @@ class DashboardController extends Controller
                 'betina'           => $betina,
                 'total_telur'      => $totalPerKandang[$k->id] ?? 0,
                 'rata_rata_harian' => $rataRataPerKandang[$k->id] ?? 0,
-                'target'           => $target,
+                'target'           => $betina * $daysInMonth, // target bulanan = betina x jumlah hari
             ];
         })
-            // Kandang 0 jantan + 0 betina (kiriman tempat lain) tidak ditampilkan
             ->filter(fn ($p) => ($p['jantan'] + $p['betina']) > 0)
             ->map(function ($p) {
-                $p['persen'] = $p['target'] > 0
-                    ? round($p['total_telur'] / $p['target'] * 100, 1)
-                    : 0;
-                $p['persen_warna'] = $p['persen'] >= 100 ? '#198754' : ($p['persen'] >= 70 ? '#e8871e' : ($p['persen'] >= 50 ? '#fd7e14' : '#dc3545'));
+                $p['persen'] = $p['target'] > 0 ? round($p['total_telur'] / $p['target'] * 100, 1) : 0;
+                $p['persen_warna'] = $p['persen'] >= 100 ? '#198754'
+                    : ($p['persen'] >= 70 ? '#e8871e' : ($p['persen'] >= 50 ? '#fd7e14' : '#dc3545'));
                 return $p;
             })
             ->sortByDesc('total_telur')->values();
 
-        // ===== 5. Top 5 pembeli & rata-rata harga per butir =====
-        $topPembeli = Penjualan::selectRaw('nama_pembeli, SUM(total_harga) as total_belanja, SUM(jumlah_telur) as total_butir')
-            ->whereMonth('tanggal', $bulan)
-            ->whereYear('tanggal', $tahun)
-            ->groupBy('nama_pembeli')
-            ->orderByDesc('total_belanja')
-            ->limit(5)
-            ->get();
+        // Top 5 pembeli bulan terpilih (nama mirip digabung, butir 0 diabaikan)
+        $topPembeli = $this->hitungTopPembeli($bulan, $tahun);
 
-        $rataRataHargaPerButir = $telurTerjualBulanIni > 0
-            ? round($omzetBulanIni / $telurTerjualBulanIni)
-            : 0;
-
-        // ===== 6. Breakdown pengeluaran per keterangan =====
+        // =====================================================================
+        // C. RINCIAN KESELURUHAN (tidak terikat bulan)
+        // =====================================================================
         $breakdownPengeluaran = Pengeluaran::selectRaw('keterangan, SUM(jumlah) as total')
-            ->whereMonth('tanggal', $bulan)
-            ->whereYear('tanggal', $tahun)
             ->groupBy('keterangan')
             ->orderByDesc('total')
             ->get();
 
-        // ===== 7. Aktivitas terbaru =====
-        // FIX MASALAH 1: ketiga query sekarang ikut filter whereMonth/whereYear($bulan, $tahun),
-        // konsisten dengan bagian dashboard lainnya.
-        // FIX MASALAH 2: ketiga jenis aktivitas digabung jadi satu collection dengan struktur
-        // seragam, diurutkan berdasarkan created_at asli (bukan ditumpuk per jenis), lalu diambil
-        // 5 teratas saja -> dikirim ke view sebagai satu variabel $aktivitasTerbaru.
-        $penjualanTerbaru = Penjualan::whereMonth('tanggal', $bulan)
-            ->whereYear('tanggal', $tahun)
-            ->latest('created_at')
-            ->limit(5)
-            ->get();
-
-        $pengeluaranTerbaru = Pengeluaran::whereMonth('tanggal', $bulan)
-            ->whereYear('tanggal', $tahun)
-            ->latest('created_at')
-            ->limit(5)
-            ->get();
-
+        $penjualanTerbaru = Penjualan::latest('created_at')->limit(5)->get();
+        $pengeluaranTerbaru = Pengeluaran::latest('created_at')->limit(5)->get();
         $telurTerbaru = Telur::query()
             ->join('kandang', 'kandang.id', '=', 'telur.kandang_id')
-            ->whereMonth('telur.tanggal', $bulan)
-            ->whereYear('telur.tanggal', $tahun)
             ->orderByDesc('telur.created_at')
             ->limit(5)
             ->get(['telur.*', 'kandang.nama as kandang_nama']);
 
         $aktivitasTerbaru = $this->gabungkanAktivitasTerbaru($penjualanTerbaru, $pengeluaranTerbaru, $telurTerbaru);
 
+        $namaBulanList = self::NAMA_BULAN;
+
         return view('dashboard.index', compact(
             'kandangs',
-            'fullPivot',
             'bulan',
             'tahun',
+            'namaBulanList',
+            'labelBulan',
+            'labelBulanLalu',
+            // keseluruhan
+            'totalAyam',
+            'totalJantan',
+            'totalBetina',
+            'omzetTotal',
+            'pengeluaranTotal',
+            'uangTersedia',
+            // bulan terpilih
+            'stokBelumTerjual',
+            'penjualanBulanIni',
+            'pengeluaranBulanIni',
+            'uangBulanIni',
+            'fullPivot',
             'totalPerKandang',
             'grandTotalProduksi',
             'rataRataHarianProduksi',
             'rataRataPerKandang',
             'chartProduksiPerKandang',
             'hariPembagi',
-            'totalAyam',
-            'totalJantan',
-            'totalBetina',
-            'omzetBulanIni',
             'telurTerjualBulanIni',
             'bonusBulanIni',
-            'pengeluaranBulanIni',
-            'labaBersih',
-            'stokBelumTerjual',
+            'ringkasanLalu',
             'chartLabels',
             'chartProduksi',
             'chartPenjualan',
             'chartPengeluaran',
             'produktivitasKandang',
             'topPembeli',
-            'rataRataHargaPerButir',
+            // keseluruhan (rincian)
             'breakdownPengeluaran',
             'aktivitasTerbaru'
         ));
     }
 
     /**
-     * FIX MASALAH 3: logic pivot produksi (grid tanggal x kandang, total per kandang, grand total,
-     * rata-rata harian) yang sebelumnya di-duplikat persis di index() dan exportExcel() sekarang
-     * ditarik ke satu private method ini. Dipanggil dari kedua method supaya tidak bisa divergen.
-     *
-     * Juga menghasilkan $chartProduksiPerKandang: produksi harian per kandang (array numerik,
-     * urutan sama dengan tanggal di $fullPivot) — dipakai di view untuk menghitung ulang grafik
-     * Tren saat user uncheck kandang tertentu (FIX MASALAH 4).
+     * Top 5 pembeli bulan terpilih.
+     * - Transaksi dengan jumlah telur 0 tidak dihitung dan tidak ditampilkan.
+     * - Nama yang mirip (beda huruf besar/kecil, spasi, tanda baca, atau salah ketik ringan) digabung.
+     *   Nama yang ditampilkan = variasi dengan butir terbanyak.
+     */
+    private function hitungTopPembeli(int $bulan, int $tahun, int $limit = 5): Collection
+    {
+        $rows = Penjualan::selectRaw('nama_pembeli, SUM(total_harga) as total_belanja, SUM(jumlah_telur) as total_butir')
+            ->whereMonth('tanggal', $bulan)
+            ->whereYear('tanggal', $tahun)
+            ->where('jumlah_telur', '>', 0)
+            ->groupBy('nama_pembeli')
+            ->get()
+            ->sortByDesc('total_butir');
+
+        $groups = [];
+        foreach ($rows as $r) {
+            $nama = trim((string) $r->nama_pembeli) ?: '-';
+            $key  = $this->normalisasiNama($nama);
+
+            $target = null;
+            foreach (array_keys($groups) as $gk) {
+                if ($this->namaMirip($key, (string) $gk)) {
+                    $target = $gk;
+                    break;
+                }
+            }
+            if ($target === null) {
+                $groups[$key] = ['nama' => $nama, 'butir' => 0, 'belanja' => 0.0];
+                $target = $key;
+            }
+            $groups[$target]['butir']   += (int) $r->total_butir;
+            $groups[$target]['belanja'] += (float) $r->total_belanja;
+        }
+
+        return collect($groups)
+            ->map(fn ($g) => (object) [
+                'nama_pembeli'  => $g['nama'],
+                'total_butir'   => $g['butir'],
+                'total_belanja' => $g['belanja'],
+            ])
+            ->filter(fn ($g) => $g->total_butir > 0)
+            ->sortByDesc('total_belanja')
+            ->take($limit)
+            ->values();
+    }
+
+    private function normalisasiNama(string $nama): string
+    {
+        $nama = mb_strtolower($nama);
+        $nama = preg_replace('/[^\p{L}\p{N}\s]/u', '', $nama); // buang tanda baca
+        return trim(preg_replace('/\s+/u', ' ', $nama));        // rapikan spasi
+    }
+
+    private function namaMirip(string $a, string $b): bool
+    {
+        if ($a === $b) return true;
+        if ($a === '' || $b === '' || $a === '-' || $b === '-') return false;
+
+        // Angka beda = orang beda (mis. "Warung 1" vs "Warung 2")
+        if (preg_replace('/\D/', '', $a) !== preg_replace('/\D/', '', $b)) return false;
+
+        similar_text($a, $b, $persen);
+        return $persen >= 85;
+    }
+
+    /**
+     * Jumlah hari pembagi rata-rata: bulan berjalan = tanggal hari ini, bulan lain = jumlah hari dalam bulan.
+     */
+    private function hariPembagi(int $bulan, int $tahun): int
+    {
+        $isBulanIni = ($bulan == now()->month && $tahun == now()->year);
+        return $isBulanIni ? now()->day : Carbon::createFromDate($tahun, $bulan, 1)->daysInMonth;
+    }
+
+    /**
+     * Ringkasan telur satu bulan: produksi, terjual, bonus, rata-rata harian.
+     */
+    private function ringkasanTelur(int $bulan, int $tahun): array
+    {
+        $produksi = (int) Telur::whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun)->sum('jumlah_butir');
+
+        $jual = Penjualan::selectRaw('COALESCE(SUM(jumlah_telur),0) as terjual, COALESCE(SUM(bonus),0) as bonus, COALESCE(SUM(total_harga),0) as omzet')
+            ->whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun)
+            ->first();
+
+        $hari = $this->hariPembagi($bulan, $tahun);
+
+        $omzet  = (float) ($jual->omzet ?? 0);
+        $keluar = (float) Pengeluaran::whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun)->sum('jumlah');
+
+        return [
+            'penjualan'   => $omzet,
+            'pengeluaran' => $keluar,
+            'uang'        => $omzet - $keluar,
+            'produksi'    => $produksi,
+            'terjual'     => (int) ($jual->terjual ?? 0),
+            'bonus'       => (int) ($jual->bonus ?? 0),
+            'belum_terjual' => $produksi - (int) ($jual->terjual ?? 0) - (int) ($jual->bonus ?? 0),
+            'rata_harian' => $hari > 0 ? round($produksi / $hari, 1) : 0,
+            'hari'        => $hari,
+        ];
+    }
+
+    /**
+     * Pivot produksi (tanggal x kandang), total, rata-rata. Dipakai index() dan exportExcel().
      */
     private function hitungProduksi(int $bulan, int $tahun, Collection $kandangs): array
     {
@@ -238,12 +319,9 @@ class DashboardController extends Controller
         }
         $grandTotalProduksi = array_sum($totalPerKandang);
 
-        $isBulanIni = ($bulan == now()->month && $tahun == now()->year);
-        $hariPembagi = $isBulanIni ? now()->day : $daysInMonth;
+        $hariPembagi = $this->hariPembagi($bulan, $tahun);
 
-        $rataRataHarianProduksi = $hariPembagi > 0
-            ? round($grandTotalProduksi / $hariPembagi, 1)
-            : 0;
+        $rataRataHarianProduksi = $hariPembagi > 0 ? round($grandTotalProduksi / $hariPembagi, 1) : 0;
 
         $rataRataPerKandang = [];
         foreach ($kandangs as $k) {
@@ -252,7 +330,7 @@ class DashboardController extends Controller
                 : 0;
         }
 
-        // Produksi harian per kandang, urutan sama seperti tanggal di $fullPivot (dipakai FIX MASALAH 4)
+        // Produksi harian per kandang (untuk hitung ulang grafik Tren saat checkbox berubah)
         $chartProduksiPerKandang = [];
         foreach ($kandangs as $k) {
             $chartProduksiPerKandang[$k->id] = [];
@@ -274,9 +352,7 @@ class DashboardController extends Controller
     }
 
     /**
-     * FIX MASALAH 2: gabungkan penjualan/pengeluaran/produksi telur jadi satu feed kronologis
-     * sungguhan — struktur seragam (tipe, deskripsi, jumlah, tanggal, created_at), diurutkan
-     * berdasarkan created_at descending lintas jenis, lalu diambil 5 teratas saja.
+     * Gabungkan penjualan/pengeluaran/produksi jadi satu feed kronologis, ambil 5 teratas.
      */
     private function gabungkanAktivitasTerbaru(
         Collection $penjualanTerbaru,
@@ -319,19 +395,16 @@ class DashboardController extends Controller
         return $aktivitas->sortByDesc('created_at')->take(5)->values();
     }
 
-    /**
-     * Helper: kasih garis pembatas (border) tipis ke semua sel dalam sebuah range,
-     * misalnya applyBorder($sheet, 'A1:D10').
-     */
+    // =========================================================================
+    // EXPORT EXCEL (tetap per bulan terpilih)
+    // =========================================================================
+
     private function applyBorder($sheet, string $range): void
     {
         $sheet->getStyle($range)->getBorders()->getAllBorders()
             ->setBorderStyle(Border::BORDER_THIN);
     }
 
-    /**
-     * Helper: kasih warna abu-abu + bold ke baris header.
-     */
     private function styleHeader($sheet, string $range): void
     {
         $sheet->getStyle($range)->getFont()->setBold(true);
@@ -340,20 +413,12 @@ class DashboardController extends Controller
             ->getStartColor()->setRGB('E0E0E0');
     }
 
-    /**
-     * Helper: nilai tetap disimpan sebagai angka 0 (supaya SUM/rumus tetap akurat),
-     * tapi TAMPILANNYA di Excel otomatis jadi "-" kalau nilainya 0/kosong.
-     * Dipakai untuk kolom angka biasa (jumlah telur, jumlah butir, dst).
-     */
     private function formatAngkaAtauStrip($sheet, string $range): void
     {
         $sheet->getStyle($range)->getNumberFormat()
             ->setFormatCode('#,##0;-#,##0;"-"');
     }
 
-    /**
-     * Sama seperti di atas, tapi untuk kolom Rupiah (pakai pemisah ribuan "Rp").
-     */
     private function formatRupiahAtauStrip($sheet, string $range): void
     {
         $sheet->getStyle($range)->getNumberFormat()
@@ -367,7 +432,6 @@ class DashboardController extends Controller
 
         $kandangs = Kandang::orderBy('nama')->get();
 
-        // FIX MASALAH 3: pakai method bersama, tidak lagi duplikat dari index()
         [
             'fullPivot'              => $fullPivot,
             'totalPerKandang'        => $totalPerKandang,
@@ -380,8 +444,7 @@ class DashboardController extends Controller
         $penjualans = Penjualan::whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun)->orderBy('tanggal')->get();
         $pengeluarans = Pengeluaran::whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun)->orderBy('tanggal')->get();
 
-        // PENTING: pakai ?? 0 supaya nilai null dari database (mis. total_harga kosong
-        // karena barter/gratis) tidak bikin sum() jadi meleset dan tidak nongol kosong di Excel.
+        // ?? 0 supaya nilai null dari database (mis. total_harga kosong karena barter/gratis) tidak meleset
         $omzetBulanIni = $penjualans->sum(fn ($p) => $p->total_harga ?? 0);
         $telurTerjualBulanIni = $penjualans->sum(fn ($p) => $p->jumlah_telur ?? 0);
         $bonusBulanIni = $penjualans->sum(fn ($p) => $p->bonus ?? 0);
@@ -389,10 +452,8 @@ class DashboardController extends Controller
         $labaBersih = $omzetBulanIni - $pengeluaranBulanIni;
         $stokBelumTerjual = $grandTotalProduksi - $telurTerjualBulanIni - $bonusBulanIni;
 
-        $namaBulan = Carbon::create()->month($bulan)->translatedFormat('F');
+        $namaBulan = self::NAMA_BULAN[$bulan];
 
-        // FIX MASALAH 7: exportExcel() sekarang jadi orchestrator singkat — tiap sheet dibuat
-        // oleh private method sendiri-sendiri.
         $data = compact(
             'kandangs',
             'fullPivot',
@@ -433,9 +494,6 @@ class DashboardController extends Controller
         ]);
     }
 
-    /**
-     * FIX MASALAH 7: Sheet 1 — Ringkasan.
-     */
     private function buatSheetRingkasan(Spreadsheet $spreadsheet, array $d): void
     {
         $s1 = $spreadsheet->getActiveSheet();
@@ -454,25 +512,19 @@ class DashboardController extends Controller
             ['Pengeluaran (Rp)', $d['pengeluaranBulanIni'] ?? 0],
             ['Uang Tersedia (Rp)', $d['labaBersih'] ?? 0],
             ['Belum Terjual (butir)', $d['stokBelumTerjual'] ?? 0],
-        ], null, 'A1', true); // true = strict null comparison, supaya nilai 0 tidak ikut dianggap kosong
+        ], null, 'A1', true);
         $s1->getStyle('A1')->getFont()->setBold(true)->setSize(14);
         $s1->getStyle('A3:A13')->getFont()->setBold(true);
         $s1->getColumnDimension('A')->setWidth(30);
         $s1->getColumnDimension('B')->setWidth(18);
-        // Garis pembatas untuk tabel ringkasan (baris 3 s/d 13)
         $this->applyBorder($s1, 'A3:B13');
-        // Baris Rupiah (Penjualan, Pengeluaran, Uang Tersedia) pakai format Rp + strip
         $this->formatRupiahAtauStrip($s1, 'B8:B8');
         $this->formatRupiahAtauStrip($s1, 'B11:B12');
-        // Baris angka biasa (Total Ayam s/d Rata-rata Produksi, Telur Terjual, Telur Bonus, Belum Terjual) pakai format strip
         $this->formatAngkaAtauStrip($s1, 'B3:B7');
         $this->formatAngkaAtauStrip($s1, 'B9:B10');
         $this->formatAngkaAtauStrip($s1, 'B13:B13');
     }
 
-    /**
-     * FIX MASALAH 7: Sheet 2 — Produksi per Kandang (pivot harian).
-     */
     private function buatSheetProduksiHarian(Spreadsheet $spreadsheet, array $d): void
     {
         $kandangs = $d['kandangs'];
@@ -497,7 +549,7 @@ class DashboardController extends Controller
             $line = [Carbon::parse($tgl)->format('d-m-Y')];
             $rowTotal = 0;
             foreach ($kandangs as $k) {
-                $val = $row[$k->id] ?? 0; // sel kosong -> 0, bukan blank
+                $val = $row[$k->id] ?? 0;
                 $rowTotal += $val;
                 $line[] = $val;
             }
@@ -512,7 +564,6 @@ class DashboardController extends Controller
         $s2->getStyle("A{$rowNum}:{$lastCol}{$rowNum}")->getFont()->setBold(true);
         $rowNum++;
 
-        // Baris rata-rata per hari per kandang
         $avgLine = ["Rata-rata/hari ({$hariPembagi} hari)"];
         foreach ($kandangs as $k) $avgLine[] = $rataRataPerKandang[$k->id] ?? 0;
         $avgLine[] = $rataRataHarianProduksi ?? 0;
@@ -523,16 +574,11 @@ class DashboardController extends Controller
         foreach (range('A', $lastCol) as $col) {
             $s2->getColumnDimension($col)->setWidth(14);
         }
-        // Garis pembatas untuk seluruh tabel produksi harian, termasuk baris total & rata-rata
         $this->applyBorder($s2, "A1:{$lastCol}{$avgRowNum}");
-        // Semua kolom angka (kandang B s/d Total) tampil "-" kalau 0/kosong
         $colBAwal = $s2->getCell([2, 1])->getColumn();
         $this->formatAngkaAtauStrip($s2, "{$colBAwal}2:{$lastCol}{$avgRowNum}");
     }
 
-    /**
-     * FIX MASALAH 7: Sheet 3 — Penjualan.
-     */
     private function buatSheetPenjualan(Spreadsheet $spreadsheet, array $d): void
     {
         $penjualans = $d['penjualans'];
@@ -543,7 +589,6 @@ class DashboardController extends Controller
         $this->styleHeader($s3, 'A1:E1');
         $r = 2;
         if ($penjualans->isEmpty()) {
-            // Jangan biarkan kosong total, kasih keterangan supaya tidak nongol blank
             $s3->fromArray([['-', 'Tidak ada data penjualan bulan ini', '-', 0, 0]], null, 'A2', true);
             $r = 3;
         } else {
@@ -551,15 +596,14 @@ class DashboardController extends Controller
                 $s3->fromArray([[
                     Carbon::parse($p->tanggal)->format('d-m-Y'),
                     $p->nama_pembeli ?: '-',
-                    $p->jumlah_telur ?? 0,       // kosong -> 0
-                    $p->bonus ?? 0,              // kosong -> 0
-                    (float) ($p->total_harga ?? 0), // kosong -> 0 (mis. barter/gratis)
+                    $p->jumlah_telur ?? 0,
+                    $p->bonus ?? 0,
+                    (float) ($p->total_harga ?? 0),
                 ]], null, 'A' . $r, true);
                 $r++;
             }
         }
         $lastRowS3 = $r - 1;
-        // Baris total di bawah tabel Penjualan
         $rowNumS3Total = $lastRowS3 + 1;
         $s3->fromArray([[
             'Total', '', $d['telurTerjualBulanIni'] ?? 0, $d['bonusBulanIni'] ?? 0, (float) ($d['omzetBulanIni'] ?? 0)
@@ -570,14 +614,10 @@ class DashboardController extends Controller
             $s3->getColumnDimension($col)->setWidth($w);
         }
         $this->applyBorder($s3, "A1:E{$rowNumS3Total}");
-        // Kolom Jumlah Telur & Bonus -> angka+strip, kolom Total Harga -> Rupiah+strip
         $this->formatAngkaAtauStrip($s3, "C2:D{$rowNumS3Total}");
         $this->formatRupiahAtauStrip($s3, "E2:E{$rowNumS3Total}");
     }
 
-    /**
-     * FIX MASALAH 7: Sheet 4 — Pengeluaran.
-     */
     private function buatSheetPengeluaran(Spreadsheet $spreadsheet, array $d): void
     {
         $pengeluarans = $d['pengeluarans'];
@@ -595,7 +635,7 @@ class DashboardController extends Controller
                 $s4->fromArray([[
                     Carbon::parse($p->tanggal)->format('d-m-Y'),
                     $p->keterangan ?: '-',
-                    (float) ($p->jumlah ?? 0), // kosong -> 0
+                    (float) ($p->jumlah ?? 0),
                 ]], null, 'A' . $r, true);
                 $r++;
             }
@@ -605,7 +645,6 @@ class DashboardController extends Controller
             $s4->getColumnDimension($col)->setWidth($w);
         }
         $this->applyBorder($s4, "A1:C{$lastRowS4}");
-        // Kolom Jumlah -> Rupiah + strip
         $this->formatRupiahAtauStrip($s4, "C2:C{$lastRowS4}");
     }
 }
